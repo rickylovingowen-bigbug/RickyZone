@@ -75,10 +75,11 @@ function App() {
       }
     };
 
-    if (habits.length > 0) {
+    if (habits.length > 0 && checkIns) {
       autoMarkFailed();
     }
-  }, [habits, checkIns]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [habits.length]);
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary">
