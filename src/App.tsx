@@ -6,11 +6,14 @@ import MonthlyView from './components/MonthlyView';
 import HabitListView from './components/HabitListView';
 import AddHabitModal from './components/AddHabitModal';
 import SettingsModal from './components/SettingsModal';
-import { Calendar, List, LayoutGrid, Settings, Plus } from 'lucide-react';
+import LoginScreen from './components/LoginScreen';
+import { Calendar, List, LayoutGrid, Settings, Plus, LogOut } from 'lucide-react';
 
 type ViewType = 'weekly' | 'monthly' | 'list';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuthenticated') === 'true');
+  const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
   const [currentView, setCurrentView] = useState<ViewType>('weekly');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -44,6 +47,24 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [habits.length]);
 
+  const handleLoginSuccess = (name: string) => {
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('username', name);
+    setUsername(name);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('username');
+    setUsername('');
+    setIsAuthenticated(false);
+  };
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary">
       {/* Header */}
@@ -51,11 +72,21 @@ function App() {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-text-primary">习惯打卡</h1>
           <div className="flex items-center gap-2">
+            <span className="hidden sm:block text-sm text-text-secondary">
+              欢迎，{username}
+            </span>
             <button
               onClick={() => setIsSettingsOpen(true)}
               className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
             >
               <Settings className="w-5 h-5 text-text-secondary" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
+              title="退出登录"
+            >
+              <LogOut className="w-5 h-5 text-text-secondary" />
             </button>
             <button
               onClick={() => setIsAddModalOpen(true)}
