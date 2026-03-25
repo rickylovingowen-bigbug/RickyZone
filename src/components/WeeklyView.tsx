@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type Habit, type CheckIn, type CheckInStatus, db, getTodayString, calculateWeeklyCompletion, calculateTotalCompleted, calculateBProgress, getWeekStart, getWeekEnd } from '../db';
+import { type Habit, type CheckIn, type CheckInStatus, db, getTodayString, calculateWeeklyCompletion, calculateTotalCompleted, calculateBProgress, getWeekStart } from '../db';
 import { ChevronLeft, ChevronRight, Check, X, Circle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -14,7 +14,6 @@ export default function WeeklyView({ habits, checkIns, currentDate, onDateChange
   const [animatingCell, setAnimatingCell] = useState<string | null>(null);
 
   const weekStart = getWeekStart(currentDate);
-  const weekEnd = getWeekEnd(currentDate);
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const day = new Date(weekStart);
     day.setDate(day.getDate() + i);
