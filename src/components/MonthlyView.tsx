@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { type Habit, type CheckIn, db, getTodayString } from '../db';
+import { type Habit, type CheckIn, getTodayString } from '../db';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 

@@ -17,6 +17,7 @@ export interface Habit {
   status: HabitStatus;
   isActive: boolean;
   isArchived: boolean;
+  pausedAt?: string;              // 暂停日期
 }
 
 export interface CheckIn {
@@ -161,7 +162,7 @@ export function calculateBProgress(
 }
 
 // 检查并归档过期B类习惯
-export function checkAndArchiveExpiredHabits(habits: Habit[], checkIns: CheckIn[]): string[] {
+export function checkAndArchiveExpiredHabits(habits: Habit[]): string[] {
   const today = getTodayString();
   const expiredIds: string[] = [];
 

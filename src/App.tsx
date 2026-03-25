@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { db, getTodayString, checkAndArchiveExpiredHabits } from './db';
+import { db, checkAndArchiveExpiredHabits } from './db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import WeeklyView from './components/WeeklyView';
 import MonthlyView from './components/MonthlyView';
@@ -27,7 +27,7 @@ function App() {
   // 检查并归档过期B类习惯
   useEffect(() => {
     const archiveExpired = async () => {
-      const expiredIds = checkAndArchiveExpiredHabits(habits, checkIns);
+      const expiredIds = checkAndArchiveExpiredHabits(habits);
       
       for (const habitId of expiredIds) {
         await db.habits.update(habitId, {
