@@ -131,7 +131,7 @@ export function calculateAccumulatedWeeks(
   const today = new Date();
 
   let accumulatedWeeks = 0;
-  let currentWeekStart = getWeekStart(earliestDate);
+  const currentWeekStart = getWeekStart(earliestDate);
 
   // 遍历每一周直到本周
   while (currentWeekStart <= today) {
