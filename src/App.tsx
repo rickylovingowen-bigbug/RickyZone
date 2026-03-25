@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { db, getTodayString, isHabitScheduledForDate } from './db';
+import { db, getTodayString, checkAndArchiveExpiredHabits } from './db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import WeeklyView from './components/WeeklyView';
 import MonthlyView from './components/MonthlyView';
@@ -24,59 +24,22 @@ function App() {
     db.checkIns.toArray()
   ) || [];
 
-  // 自动标记失败
+  // 检查并归档过期B类习惯
   useEffect(() => {
-    const autoMarkFailed = async () => {
-      const today = getTodayString();
-      const activeHabits = habits.filter(h => h.isActive && !h.isArchived);
+    const archiveExpired = async () => {
+      const expiredIds = checkAndArchiveExpiredHabits(habits, checkIns);
       
-      for (const habit of activeHabits) {
-        // 获取该习惯的所有打卡记录
-        const habitCheckIns = checkIns.filter(ci => ci.habitId === habit.id);
-        
-        // 找出所有应该有安排但还没处理的日期
-        const lastCheckIn = habitCheckIns.length > 0 
-          ? habitCheckIns.reduce((latest, ci) => 
-              ci.date > latest.date ? ci : latest
-            )
-          : null;
-        
-        const startDate = lastCheckIn 
-          ? new Date(lastCheckIn.date)
-          : new Date(habit.createdAt);
-        
-        const endDate = new Date(today);
-        
-        // 遍历从上次打卡到今天之间的所有日期
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          const dateStr = d.toISOString().split('T')[0];
-          
-          // 跳过今天（今天还没结束）
-          if (dateStr === today) continue;
-          
-          // 检查这天是否有安排
-          if (!isHabitScheduledForDate(habit, dateStr)) continue;
-          
-          // 检查这天是否已有打卡记录
-          const existingCheckIn = habitCheckIns.find(ci => ci.date === dateStr);
-          
-          if (!existingCheckIn) {
-            // 自动标记为失败
-            await db.checkIns.add({
-              id: crypto.randomUUID(),
-              habitId: habit.id,
-              date: dateStr,
-              status: 'failed',
-              updatedAt: new Date().toISOString(),
-              isAutoMarked: true,
-            });
-          }
-        }
+      for (const habitId of expiredIds) {
+        await db.habits.update(habitId, {
+          status: 'archived',
+          isArchived: true,
+          updatedAt: new Date().toISOString(),
+        });
       }
     };
 
-    if (habits.length > 0 && checkIns) {
-      autoMarkFailed();
+    if (habits.length > 0) {
+      archiveExpired();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [habits.length]);

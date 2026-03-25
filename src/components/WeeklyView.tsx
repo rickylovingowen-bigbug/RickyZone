@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { type Habit, type CheckIn, type CheckInStatus, db, isHabitScheduledForDate, getTodayString } from '../db';
-import { ChevronLeft, ChevronRight, Check, X, Minus } from 'lucide-react';
+import { type Habit, type CheckIn, type CheckInStatus, db, getTodayString, calculateWeeklyCompletion, calculateTotalCompleted, calculateBProgress, getWeekStart, getWeekEnd } from '../db';
+import { ChevronLeft, ChevronRight, Check, X, Circle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface WeeklyViewProps {
@@ -13,15 +13,8 @@ interface WeeklyViewProps {
 export default function WeeklyView({ habits, checkIns, currentDate, onDateChange }: WeeklyViewProps) {
   const [animatingCell, setAnimatingCell] = useState<string | null>(null);
 
-  // 获取本周的开始（周一）
-  const getWeekStart = (date: Date) => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff));
-  };
-
   const weekStart = getWeekStart(currentDate);
+  const weekEnd = getWeekEnd(currentDate);
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const day = new Date(weekStart);
     day.setDate(day.getDate() + i);
@@ -41,7 +34,12 @@ export default function WeeklyView({ habits, checkIns, currentDate, onDateChange
   };
 
   const toggleCheckIn = async (habit: Habit, dateStr: string) => {
-    if (!isHabitScheduledForDate(habit, dateStr)) return;
+    // 检查日期是否在创建日期之前
+    const createdDate = habit.createdAt.split('T')[0];
+    if (dateStr < createdDate) return;
+
+    // 检查是否已暂停且日期在暂停日期之后
+    if (habit.status === 'paused' && habit.pausedAt && dateStr >= habit.pausedAt) return;
 
     const cellKey = `${habit.id}-${dateStr}`;
     setAnimatingCell(cellKey);
@@ -71,22 +69,18 @@ export default function WeeklyView({ habits, checkIns, currentDate, onDateChange
     setTimeout(() => setAnimatingCell(null), 300);
   };
 
-  const getStatusIcon = (status: CheckInStatus | undefined, isScheduled: boolean) => {
-    if (!isScheduled) return <Minus className="w-4 h-4 text-text-disabled" />;
-    
+  const getStatusIcon = (status: CheckInStatus | undefined) => {
     switch (status) {
       case 'completed':
         return <Check className="w-4 h-4" />;
       case 'failed':
         return <X className="w-4 h-4" />;
       default:
-        return <div className="w-4 h-4 rounded-full border-2 border-current" />;
+        return <Circle className="w-4 h-4" />;
     }
   };
 
-  const getStatusClass = (status: CheckInStatus | undefined, isScheduled: boolean, _isToday: boolean) => {
-    if (!isScheduled) return 'bg-bg-tertiary/30 text-text-disabled cursor-default';
-    
+  const getStatusClass = (status: CheckInStatus | undefined) => {
     const baseClass = 'cursor-pointer hover:scale-105 transition-transform';
     
     switch (status) {
@@ -100,6 +94,9 @@ export default function WeeklyView({ habits, checkIns, currentDate, onDateChange
   };
 
   const today = getTodayString();
+  
+  // 只显示进行中的习惯
+  const activeHabits = habits.filter(h => h.status === 'active');
 
   return (
     <div className="space-y-4">
@@ -123,7 +120,7 @@ export default function WeeklyView({ habits, checkIns, currentDate, onDateChange
       {/* Week Grid */}
       <div className="bg-bg-secondary rounded-xl overflow-hidden">
         {/* Header Row */}
-        <div className="grid grid-cols-8 border-b border-bg-tertiary">
+        <div className="grid grid-cols-[1fr,repeat(7,minmax(0,1fr)),auto] border-b border-bg-tertiary">
           <div className="p-4 text-sm font-medium text-text-tertiary">习惯</div>
           {weekDays.map((day, index) => {
             const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -142,75 +139,102 @@ export default function WeeklyView({ habits, checkIns, currentDate, onDateChange
               </div>
             );
           })}
+          <div className="p-4 text-sm font-medium text-text-tertiary text-center">统计</div>
         </div>
 
         {/* Habit Rows */}
-        {habits.length === 0 ? (
+        {activeHabits.length === 0 ? (
           <div className="p-8 text-center text-text-tertiary">
-            还没有习惯，点击右上角"新建"添加第一个习惯吧
+            还没有进行中的习惯，点击右上角"新建"添加第一个习惯吧
           </div>
         ) : (
-          habits.map((habit) => (
-            <div key={habit.id} className="grid grid-cols-8 border-b border-bg-tertiary/50 last:border-b-0">
-              {/* Habit Name */}
-              <div className="p-4 flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: habit.color }}
-                />
-                <span className="text-sm font-medium text-text-primary truncate">
-                  {habit.name}
-                </span>
-              </div>
+          activeHabits.map((habit) => {
+            // 计算统计数据
+            let statsContent;
+            if (habit.habitType === 'A') {
+              const weeklyStats = calculateWeeklyCompletion(habit, checkIns, weekStart);
+              const totalCompleted = calculateTotalCompleted(checkIns, habit.id);
+              statsContent = (
+                <div className="text-center">
+                  <div className="text-sm font-bold text-accent">{weeklyStats.rate}%</div>
+                  <div className="text-xs text-text-tertiary">本周</div>
+                  <div className="text-xs text-text-secondary mt-1">累计 {totalCompleted} 次</div>
+                </div>
+              );
+            } else {
+              const progress = calculateBProgress(habit, checkIns);
+              statsContent = (
+                <div className="text-center">
+                  <div className="text-sm font-bold text-accent">{progress.completed}/{progress.target}</div>
+                  <div className="text-xs text-text-tertiary">{progress.rate}%</div>
+                </div>
+              );
+            }
 
-              {/* Daily Cells */}
-              {weekDays.map((day, index) => {
-                const dateStr = day.toISOString().split('T')[0];
-                
-                // 检查是否在创建日期之后
-                const createdDate = habit.createdAt.split('T')[0];
-                if (dateStr < createdDate) {
-                  return <div key={index} className="p-4" />; // 创建日期前显示空白
-                }
-                
-                // 检查是否已暂停且日期在暂停日期之后
-                if (habit.status === 'paused' && habit.pausedAt && dateStr >= habit.pausedAt) {
-                  return <div key={index} className="p-4" />; // 暂停后显示空白
-                }
-                
-                const isScheduled = isHabitScheduledForDate(habit, dateStr);
-                
-                // 无安排时显示空白
-                if (!isScheduled) {
-                  return <div key={index} className="p-4" />;
-                }
-                
-                const checkIn = getCheckInStatus(habit.id, dateStr);
-                const cellKey = `${habit.id}-${dateStr}`;
-                const isAnimating = animatingCell === cellKey;
-
-                return (
+            return (
+              <div key={habit.id} className="grid grid-cols-[1fr,repeat(7,minmax(0,1fr)),auto] border-b border-bg-tertiary/50 last:border-b-0 items-center">
+                {/* Habit Name */}
+                <div className="p-4 flex items-center gap-2">
                   <div
-                    key={index}
-                    className={`p-4 flex items-center justify-center ${
-                      dateStr === today ? 'bg-accent/5' : ''
-                    }`}
-                  >
-                    <motion.button
-                      onClick={() => toggleCheckIn(habit, dateStr)}
-                      className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center ${
-                        getStatusClass(checkIn?.status, true, dateStr === today)
-                      }`}
-                      animate={isAnimating ? { scale: [1, 1.2, 1] } : {}}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {getStatusIcon(checkIn?.status, true)}
-                    </motion.button>
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: habit.color }}
+                  />
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium text-text-primary truncate block">
+                      {habit.name}
+                    </span>
+                    <span className="text-xs text-text-tertiary">{habit.habitType}类</span>
                   </div>
-                );
-              })}
-            </div>
-          ))
+                </div>
+
+                {/* Daily Cells */}
+                {weekDays.map((day, index) => {
+                  const dateStr = day.toISOString().split('T')[0];
+                  
+                  // 检查是否在创建日期之前
+                  const createdDate = habit.createdAt.split('T')[0];
+                  if (dateStr < createdDate) {
+                    return <div key={index} className="p-2" />;
+                  }
+                  
+                  // 检查是否已暂停且日期在暂停日期之后
+                  if (habit.status === 'paused' && habit.pausedAt && dateStr >= habit.pausedAt) {
+                    return <div key={index} className="p-2" />;
+                  }
+                  
+                  const checkIn = getCheckInStatus(habit.id, dateStr);
+                  const cellKey = `${habit.id}-${dateStr}`;
+                  const isAnimating = animatingCell === cellKey;
+                  const isToday = dateStr === today;
+
+                  return (
+                    <div
+                      key={index}
+                      className={`p-2 flex items-center justify-center ${
+                        isToday ? 'bg-accent/5' : ''
+                      }`}
+                    >
+                      <motion.button
+                        onClick={() => toggleCheckIn(habit, dateStr)}
+                        className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center ${
+                          getStatusClass(checkIn?.status)
+                        }`}
+                        animate={isAnimating ? { scale: [1, 1.2, 1] } : {}}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {getStatusIcon(checkIn?.status)}
+                      </motion.button>
+                    </div>
+                  );
+                })}
+
+                {/* Stats Column */}
+                <div className="p-2">
+                  {statsContent}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </div>

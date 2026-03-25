@@ -1,25 +1,22 @@
 import Dexie, { type Table } from 'dexie';
 
-export type FrequencyType = 'daily' | 'weekly' | 'once';
+export type HabitType = 'A' | 'B';
 export type CheckInStatus = 'pending' | 'completed' | 'failed';
-
 export type HabitStatus = 'active' | 'archived' | 'paused' | 'deleted';
 
 export interface Habit {
   id: string;
   name: string;
   color: string;
-  frequency: FrequencyType;
-  frequencyConfig: {
-    daysOfWeek?: number[]; // 0-6, 周日=0
-    specificDate?: string; // YYYY-MM-DD
-  };
+  habitType: HabitType;           // A或B
+  weeklyTarget?: number;          // A类：每周目标次数（1-7）
+  totalTarget?: number;           // B类：累积总目标次数
+  deadline?: string;              // B类：截止日期（可选）
   createdAt: string;
   updatedAt: string;
   status: HabitStatus;
-  pausedAt?: string; // 暂停日期
-  isActive: boolean; // 兼容旧数据
-  isArchived: boolean; // 兼容旧数据
+  isActive: boolean;
+  isArchived: boolean;
 }
 
 export interface CheckIn {
@@ -37,20 +34,10 @@ export class HabitTrackerDB extends Dexie {
 
   constructor() {
     super('HabitTrackerDB');
-    this.version(2).stores({
-      habits: 'id, createdAt, status',
+    // 升级到 v3，清空旧数据
+    this.version(3).stores({
+      habits: 'id, createdAt, status, habitType',
       checkIns: 'id, habitId, date, status, [habitId+date]',
-    }).upgrade(tx => {
-      // 迁移旧数据
-      return tx.table('habits').toCollection().modify(habit => {
-        if (!habit.status) {
-          if (habit.isArchived) {
-            habit.status = 'archived';
-          } else {
-            habit.status = 'active';
-          }
-        }
-      });
     });
   }
 }
@@ -78,104 +65,119 @@ export function getTodayString(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-// 检查某天是否有习惯安排
-export function isHabitScheduledForDate(habit: Habit, dateStr: string): boolean {
-  const date = new Date(dateStr);
-  const dayOfWeek = date.getDay(); // 0-6
-
-  switch (habit.frequency) {
-    case 'daily':
-      return true;
-    case 'weekly':
-      return habit.frequencyConfig.daysOfWeek?.includes(dayOfWeek) ?? false;
-    case 'once':
-      return habit.frequencyConfig.specificDate === dateStr;
-    default:
-      return false;
-  }
+// 获取本周的开始（周一）
+export function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
 }
 
-// 计算连续天数
-export function calculateStreak(habit: Habit, checkIns: CheckIn[]): number {
-  if (!checkIns.length) return 0;
-  
-  // 一次性日程没有连续天数的概念
-  if (habit.frequency === 'once') {
-    return 0;
-  }
-  
-  // 按日期排序（从新到旧）
-  const sortedCheckIns = [...checkIns]
-    .filter(ci => ci.status === 'completed')
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  
-  if (!sortedCheckIns.length) return 0;
-  
-  let streak = 0;
-  let currentDate = new Date();
-  currentDate.setHours(0, 0, 0, 0);
-  
-  // 检查今天或最近有安排的日子
-  const todayStr = getTodayString();
-  const todayCheckIn = sortedCheckIns.find(ci => ci.date === todayStr);
-  
-  if (todayCheckIn) {
-    streak = 1;
-  } else {
-    // 检查今天是否有安排
-    if (isHabitScheduledForDate(habit, todayStr)) {
-      // 今天有安排但没完成，检查昨天
-      const yesterday = new Date(currentDate);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
-      const yesterdayCheckIn = sortedCheckIns.find(ci => ci.date === yesterdayStr);
-      if (yesterdayCheckIn) {
-        streak = 1;
-        currentDate = yesterday;
-      } else {
-        return 0;
-      }
-    } else {
-      // 今天没安排，找最近完成的
-      const lastCompleted = sortedCheckIns[0];
-      const lastDate = new Date(lastCompleted.date);
-      streak = 1;
-      currentDate = lastDate;
-    }
-  }
-  
-  // 向前追溯（最多追溯365天，防止无限循环）
-  let daysChecked = 0;
-  const maxDays = 365;
-  
-  while (daysChecked < maxDays) {
-    const prevDate = new Date(currentDate);
-    prevDate.setDate(prevDate.getDate() - 1);
-    const prevDateStr = prevDate.toISOString().split('T')[0];
-    daysChecked++;
-    
-    // 检查前一天是否有安排
-    if (!isHabitScheduledForDate(habit, prevDateStr)) {
-      // 前一天没安排，继续往前
-      currentDate = prevDate;
-      continue;
-    }
-    
-    // 前一天有安排，检查是否完成
-    const prevCheckIn = sortedCheckIns.find(ci => ci.date === prevDateStr);
-    if (prevCheckIn && prevCheckIn.status === 'completed') {
-      streak++;
-      currentDate = prevDate;
-    } else {
-      break;
-    }
-  }
-  
-  return streak;
+// 获取本周的结束（周日）
+export function getWeekEnd(date: Date): Date {
+  const weekStart = getWeekStart(date);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  return weekEnd;
 }
 
-// 计算完成率
+// 计算本周完成率（A类习惯）
+export function calculateWeeklyCompletion(
+  habit: Habit,
+  checkIns: CheckIn[],
+  weekStart: Date
+): { completed: number; target: number; rate: number } {
+  if (habit.habitType !== 'A' || !habit.weeklyTarget) {
+    return { completed: 0, target: 0, rate: 0 };
+  }
+
+  const weekEnd = getWeekEnd(weekStart);
+  const weekStartStr = weekStart.toISOString().split('T')[0];
+  const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+  const weekCheckIns = checkIns.filter(
+    ci => ci.habitId === habit.id && 
+    ci.date >= weekStartStr && 
+    ci.date <= weekEndStr &&
+    ci.status === 'completed'
+  );
+
+  const completed = weekCheckIns.length;
+  const target = habit.weeklyTarget;
+  const rate = Math.min(100, Math.round((completed / target) * 100));
+
+  return { completed, target, rate };
+}
+
+// 计算历史累积完成次数
+export function calculateTotalCompleted(checkIns: CheckIn[], habitId: string): number {
+  return checkIns.filter(ci => ci.habitId === habitId && ci.status === 'completed').length;
+}
+
+// 计算累积达成周数（A类习惯：每周完成率达到100%算一周）
+export function calculateAccumulatedWeeks(
+  habit: Habit,
+  checkIns: CheckIn[]
+): number {
+  if (habit.habitType !== 'A' || !habit.weeklyTarget) return 0;
+
+  // 获取所有打卡记录中的最早日期
+  const habitCheckIns = checkIns.filter(ci => ci.habitId === habit.id && ci.status === 'completed');
+  if (habitCheckIns.length === 0) return 0;
+
+  const dates = habitCheckIns.map(ci => new Date(ci.date));
+  const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+  const today = new Date();
+
+  let accumulatedWeeks = 0;
+  let currentWeekStart = getWeekStart(earliestDate);
+
+  // 遍历每一周直到本周
+  while (currentWeekStart <= today) {
+    const completion = calculateWeeklyCompletion(habit, checkIns, currentWeekStart);
+    if (completion.rate >= 100) {
+      accumulatedWeeks++;
+    }
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+  }
+
+  return accumulatedWeeks;
+}
+
+// 计算B类习惯的完成比例
+export function calculateBProgress(
+  habit: Habit,
+  checkIns: CheckIn[]
+): { completed: number; target: number; rate: number } {
+  if (habit.habitType !== 'B' || !habit.totalTarget) {
+    return { completed: 0, target: 0, rate: 0 };
+  }
+
+  const completed = calculateTotalCompleted(checkIns, habit.id);
+  const target = habit.totalTarget;
+  const rate = Math.min(100, Math.round((completed / target) * 100));
+
+  return { completed, target, rate };
+}
+
+// 检查并归档过期B类习惯
+export function checkAndArchiveExpiredHabits(habits: Habit[], checkIns: CheckIn[]): string[] {
+  const today = getTodayString();
+  const expiredIds: string[] = [];
+
+  for (const habit of habits) {
+    if (habit.habitType === 'B' && 
+        habit.deadline && 
+        habit.deadline < today && 
+        habit.status === 'active') {
+      expiredIds.push(habit.id);
+    }
+  }
+
+  return expiredIds;
+}
+
+// 计算完成率（保留函数用于兼容）
 export function calculateCompletionRate(checkIns: CheckIn[]): number {
   if (!checkIns.length) return 0;
   
@@ -196,7 +198,7 @@ export async function exportData(): Promise<string> {
     habits,
     checkIns,
     exportDate: new Date().toISOString(),
-    version: '1.0',
+    version: '2.0',
   };
   
   return JSON.stringify(data, null, 2);

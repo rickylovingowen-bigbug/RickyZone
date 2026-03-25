@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { db, HABIT_COLORS, generateId, getTodayString } from '../db';
+import { db, HABIT_COLORS, generateId, type HabitType } from '../db';
 import type { Habit } from '../db';
 import { X, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,44 +10,22 @@ interface AddHabitModalProps {
 
 export default function AddHabitModal({ onClose }: AddHabitModalProps) {
   const [name, setName] = useState('');
-  const [frequency, setFrequency] = useState<Habit['frequency']>('daily');
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); // 默认周一三五
-  const [specificDate, setSpecificDate] = useState(getTodayString());
+  const [habitType, setHabitType] = useState<HabitType>('A');
+  const [weeklyTarget, setWeeklyTarget] = useState(3); // A类：默认每周3次
+  const [totalTarget, setTotalTarget] = useState(30); // B类：默认累积30次
+  const [deadline, setDeadline] = useState('');
   const [selectedColor, setSelectedColor] = useState(HABIT_COLORS[2].value); // 默认绿色
-
-  const weekDays = [
-    { value: 1, label: '一' },
-    { value: 2, label: '二' },
-    { value: 3, label: '三' },
-    { value: 4, label: '四' },
-    { value: 5, label: '五' },
-    { value: 6, label: '六' },
-    { value: 0, label: '日' },
-  ];
-
-  const toggleDay = (day: number) => {
-    setSelectedDays(prev =>
-      prev.includes(day)
-        ? prev.filter(d => d !== day)
-        : [...prev, day].sort()
-    );
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
     const now = new Date().toISOString();
-    const habit: Habit = {
+    const habitData: Partial<Habit> = {
       id: generateId(),
       name: name.trim(),
       color: selectedColor,
-      frequency,
-      frequencyConfig: frequency === 'weekly' 
-        ? { daysOfWeek: selectedDays }
-        : frequency === 'once'
-        ? { specificDate }
-        : {},
+      habitType,
       createdAt: now,
       updatedAt: now,
       status: 'active',
@@ -55,7 +33,16 @@ export default function AddHabitModal({ onClose }: AddHabitModalProps) {
       isArchived: false,
     };
 
-    await db.habits.add(habit);
+    if (habitType === 'A') {
+      habitData.weeklyTarget = weeklyTarget;
+    } else {
+      habitData.totalTarget = totalTarget;
+      if (deadline) {
+        habitData.deadline = deadline;
+      }
+    }
+
+    await db.habits.add(habitData as Habit);
     onClose();
   };
 
@@ -103,70 +90,97 @@ export default function AddHabitModal({ onClose }: AddHabitModalProps) {
             />
           </div>
 
-          {/* Frequency Selection */}
+          {/* Habit Type Selection */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              频率
+              习惯类型
             </label>
             <div className="flex gap-2">
-              {[
-                { value: 'daily', label: '每天' },
-                { value: 'weekly', label: '每周' },
-                { value: 'once', label: '一次' },
-              ].map(option => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setFrequency(option.value as Habit['frequency'])}
-                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                    frequency === option.value
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setHabitType('A')}
+                className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  habitType === 'A'
+                    ? 'bg-accent text-white'
+                    : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                <div className="font-bold">A类</div>
+                <div className="text-xs opacity-80 mt-1">每周目标</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setHabitType('B')}
+                className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  habitType === 'B'
+                    ? 'bg-accent text-white'
+                    : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                <div className="font-bold">B类</div>
+                <div className="text-xs opacity-80 mt-1">累积目标</div>
+              </button>
             </div>
           </div>
 
-          {/* Weekly Days Selection */}
-          {frequency === 'weekly' && (
+          {/* A类：每周目标次数 */}
+          {habitType === 'A' && (
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">
-                选择每周的哪几天
+                每周目标次数（1-7天）
               </label>
-              <div className="flex gap-2">
-                {weekDays.map(day => (
-                  <button
-                    key={day.value}
-                    type="button"
-                    onClick={() => toggleDay(day.value)}
-                    className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
-                      selectedDays.includes(day.value)
-                        ? 'bg-accent text-white'
-                        : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
-                    }`}
-                  >
-                    {day.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={1}
+                  max={7}
+                  value={weeklyTarget}
+                  onChange={e => setWeeklyTarget(parseInt(e.target.value))}
+                  className="flex-1 h-2 bg-bg-tertiary rounded-lg appearance-none cursor-pointer accent-accent"
+                />
+                <span className="w-12 text-center text-lg font-bold text-accent">
+                  {weeklyTarget}
+                </span>
               </div>
+              <p className="text-xs text-text-tertiary mt-2">
+                每周完成 {weeklyTarget} 天即算达成目标
+              </p>
             </div>
           )}
 
-          {/* Once Date Selection */}
-          {frequency === 'once' && (
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">
-                选择日期
-              </label>
-              <input
-                type="date"
-                value={specificDate}
-                onChange={e => setSpecificDate(e.target.value)}
-                className="w-full px-4 py-3 bg-bg-tertiary border border-bg-tertiary rounded-xl text-text-primary focus:outline-none focus:border-accent transition-colors"
-              />
+          {/* B类：累积总目标 + 截止日期 */}
+          {habitType === 'B' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  累积总目标次数
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={totalTarget}
+                  onChange={e => setTotalTarget(parseInt(e.target.value) || 1)}
+                  className="w-full px-4 py-3 bg-bg-tertiary border border-bg-tertiary rounded-xl text-text-primary focus:outline-none focus:border-accent transition-colors"
+                />
+                <p className="text-xs text-text-tertiary mt-2">
+                  累计完成 {totalTarget} 次即达成目标
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  截止日期（可选）
+                </label>
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={e => setDeadline(e.target.value)}
+                  className="w-full px-4 py-3 bg-bg-tertiary border border-bg-tertiary rounded-xl text-text-primary focus:outline-none focus:border-accent transition-colors"
+                />
+                <p className="text-xs text-text-tertiary mt-2">
+                  到达此日期后习惯将自动归档
+                </p>
+              </div>
             </div>
           )}
 
@@ -196,7 +210,7 @@ export default function AddHabitModal({ onClose }: AddHabitModalProps) {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={!name.trim() || (frequency === 'weekly' && selectedDays.length === 0)}
+            disabled={!name.trim() || (habitType === 'A' && !weeklyTarget) || (habitType === 'B' && !totalTarget)}
             className="w-full py-3 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary disabled:text-text-disabled text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { db, calculateStreak, calculateCompletionRate, getTodayString, type Habit, type CheckIn } from '../db';
-import { Archive, Trash2, TrendingUp, Flame, Target, Pause, Play } from 'lucide-react';
+import { db, calculateAccumulatedWeeks, calculateTotalCompleted, calculateBProgress, getTodayString, type Habit, type CheckIn } from '../db';
+import { Archive, Trash2, Target, Pause, Play, Trophy, TrendingUp, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface HabitListViewProps {
@@ -249,22 +249,23 @@ function HabitCard({
   showPause,
   showResume 
 }: HabitCardProps) {
-  const streak = calculateStreak(habit, checkIns);
-  const rate = calculateCompletionRate(checkIns);
-  const completed = checkIns.filter(ci => ci.status === 'completed').length;
-  const total = checkIns.filter(ci => ci.status !== 'pending').length;
+  const totalCompleted = calculateTotalCompleted(checkIns, habit.id);
 
-  const getFrequencyText = () => {
-    switch (habit.frequency) {
-      case 'daily':
-        return '每天';
-      case 'weekly':
-        const days = habit.frequencyConfig.daysOfWeek?.map(d => ['日', '一', '二', '三', '四', '五', '六'][d]).join('、');
-        return `每周 ${days}`;
-      case 'once':
-        return `一次 (${habit.frequencyConfig.specificDate})`;
-      default:
-        return '';
+  // A类习惯：显示累积达成周数
+  const accumulatedWeeks = habit.habitType === 'A' 
+    ? calculateAccumulatedWeeks(habit, checkIns)
+    : 0;
+
+  // B类习惯：显示进度
+  const bProgress = habit.habitType === 'B'
+    ? calculateBProgress(habit, checkIns)
+    : null;
+
+  const getHabitTypeText = () => {
+    if (habit.habitType === 'A') {
+      return `每周 ${habit.weeklyTarget} 次`;
+    } else {
+      return `累积 ${habit.totalTarget} 次`;
     }
   };
 
@@ -298,7 +299,9 @@ function HabitCard({
               <h3 className="font-semibold text-text-primary">{habit.name}</h3>
               {getStatusBadge()}
             </div>
-            <p className="text-xs text-text-tertiary">{getFrequencyText()}</p>
+            <p className="text-xs text-text-tertiary">
+              {habit.habitType === 'A' ? 'A类习惯' : 'B类习惯'} · {getHabitTypeText()}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -339,44 +342,53 @@ function HabitCard({
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 text-success mb-1">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-lg font-bold">{rate}%</span>
+      {/* Stats - A类习惯 */}
+      {habit.habitType === 'A' && (
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="text-center bg-bg-tertiary/50 rounded-xl p-3">
+            <div className="flex items-center justify-center gap-1 text-warning mb-1">
+              <Trophy className="w-4 h-4" />
+              <span className="text-lg font-bold">{accumulatedWeeks}</span>
+            </div>
+            <p className="text-xs text-text-tertiary">累积达成周数</p>
           </div>
-          <p className="text-xs text-text-tertiary">完成率</p>
-        </div>
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 text-warning mb-1">
-            <Target className="w-4 h-4" />
-            <span className="text-lg font-bold">{completed}</span>
+          <div className="text-center bg-bg-tertiary/50 rounded-xl p-3">
+            <div className="flex items-center justify-center gap-1 text-success mb-1">
+              <CheckCircle className="w-4 h-4" />
+              <span className="text-lg font-bold">{totalCompleted}</span>
+            </div>
+            <p className="text-xs text-text-tertiary">历史累积完成</p>
           </div>
-          <p className="text-xs text-text-tertiary">已完成</p>
         </div>
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 text-habit-orange mb-1">
-            <Flame className="w-4 h-4" />
-            <span className="text-lg font-bold">{streak}</span>
-          </div>
-          <p className="text-xs text-text-tertiary">连续天数</p>
-        </div>
-      </div>
+      )}
 
-      {/* Progress Bar */}
-      <div className="w-full bg-bg-tertiary rounded-full h-2 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{
-            width: `${total > 0 ? (completed / total) * 100 : 0}%`,
-            backgroundColor: habit.color,
-          }}
-        />
-      </div>
-      <p className="text-xs text-text-tertiary mt-2 text-right">
-        {completed} / {total} 次
-      </p>
+      {/* Stats - B类习惯 */}
+      {habit.habitType === 'B' && bProgress && (
+        <div className="space-y-3 mb-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-text-secondary">完成进度</span>
+            <span className="text-sm font-semibold text-accent">{bProgress.rate}%</span>
+          </div>
+          <div className="w-full bg-bg-tertiary rounded-full h-3 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500 bg-accent"
+              style={{ width: `${bProgress.rate}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs text-text-tertiary">
+            <span>已完成: {bProgress.completed}</span>
+            <span>目标: {bProgress.target}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Deadline for B类 */}
+      {habit.habitType === 'B' && habit.deadline && (
+        <div className="flex items-center gap-2 text-xs text-text-tertiary mt-3 pt-3 border-t border-bg-tertiary">
+          <TrendingUp className="w-3 h-3" />
+          <span>截止日期: {habit.deadline}</span>
+        </div>
+      )}
     </motion.div>
   );
 }
