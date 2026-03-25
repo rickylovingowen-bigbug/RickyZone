@@ -7,6 +7,8 @@ type LoginScreenProps = {
 };
 
 function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+  const VALID_USERNAME = 'lovingowen';
+  const VALID_PASSWORD = 'dawangbaxiaoni7';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,6 +21,11 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
     if (!trimmedUsername || !trimmedPassword) {
       setError('请输入用户名和密码');
+      return;
+    }
+
+    if (trimmedUsername !== VALID_USERNAME || trimmedPassword !== VALID_PASSWORD) {
+      setError('用户名或密码错误');
       return;
     }
 
