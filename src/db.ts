@@ -99,6 +99,11 @@ export function isHabitScheduledForDate(habit: Habit, dateStr: string): boolean 
 export function calculateStreak(habit: Habit, checkIns: CheckIn[]): number {
   if (!checkIns.length) return 0;
   
+  // 一次性日程没有连续天数的概念
+  if (habit.frequency === 'once') {
+    return 0;
+  }
+  
   // 按日期排序（从新到旧）
   const sortedCheckIns = [...checkIns]
     .filter(ci => ci.status === 'completed')
@@ -140,11 +145,15 @@ export function calculateStreak(habit: Habit, checkIns: CheckIn[]): number {
     }
   }
   
-  // 向前追溯
-  while (true) {
+  // 向前追溯（最多追溯365天，防止无限循环）
+  let daysChecked = 0;
+  const maxDays = 365;
+  
+  while (daysChecked < maxDays) {
     const prevDate = new Date(currentDate);
     prevDate.setDate(prevDate.getDate() - 1);
     const prevDateStr = prevDate.toISOString().split('T')[0];
+    daysChecked++;
     
     // 检查前一天是否有安排
     if (!isHabitScheduledForDate(habit, prevDateStr)) {
