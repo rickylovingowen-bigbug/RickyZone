@@ -39,7 +39,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
       setImportSuccess(true);
       setImportError(null);
       setTimeout(() => setImportSuccess(false), 3000);
-    } catch (error) {
+    } catch {
       setImportError('导入失败：文件格式不正确');
       setImportSuccess(false);
     }

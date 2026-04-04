@@ -3,6 +3,8 @@ import Dexie, { type Table } from 'dexie';
 export type HabitType = 'A' | 'B';
 export type CheckInStatus = 'pending' | 'completed' | 'failed';
 export type HabitStatus = 'active' | 'archived' | 'paused' | 'deleted';
+export type MartialLevel = 'S' | 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D';
+export type Gender = 'male' | 'female';
 
 export interface Habit {
   id: string;
@@ -29,16 +31,40 @@ export interface CheckIn {
   isAutoMarked: boolean;
 }
 
+export interface Character {
+  id: string;
+  name: string;
+  gender?: Gender;
+  age?: number;
+  sect?: string;
+  sectPosition?: string;
+  faction?: string;
+  factionPosition?: string;
+  weapon?: string;
+  martialLevel?: MartialLevel;
+  appearance?: string;
+  personality?: string;
+  value?: string;
+  conflict?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class HabitTrackerDB extends Dexie {
   habits!: Table<Habit>;
   checkIns!: Table<CheckIn>;
+  characters!: Table<Character>;
 
   constructor() {
     super('HabitTrackerDB');
-    // 升级到 v3，清空旧数据
     this.version(3).stores({
       habits: 'id, createdAt, status, habitType',
       checkIns: 'id, habitId, date, status, [habitId+date]',
+    });
+    this.version(4).stores({
+      habits: 'id, createdAt, status, habitType',
+      checkIns: 'id, habitId, date, status, [habitId+date]',
+      characters: 'id, name, sect, martialLevel, age, createdAt',
     });
   }
 }
@@ -131,7 +157,7 @@ export function calculateAccumulatedWeeks(
   const today = new Date();
 
   let accumulatedWeeks = 0;
-  let currentWeekStart = getWeekStart(earliestDate);
+  const currentWeekStart = getWeekStart(earliestDate);
 
   // 遍历每一周直到本周
   while (currentWeekStart <= today) {
@@ -194,12 +220,14 @@ export function calculateCompletionRate(checkIns: CheckIn[]): number {
 export async function exportData(): Promise<string> {
   const habits = await db.habits.toArray();
   const checkIns = await db.checkIns.toArray();
+  const characters = await db.characters.toArray();
   
   const data = {
     habits,
     checkIns,
+    characters,
     exportDate: new Date().toISOString(),
-    version: '2.0',
+    version: '2.1',
   };
   
   return JSON.stringify(data, null, 2);
@@ -213,10 +241,14 @@ export async function importData(jsonString: string): Promise<void> {
     throw new Error('Invalid data format');
   }
   
-  await db.transaction('rw', db.habits, db.checkIns, async () => {
+  await db.transaction('rw', db.habits, db.checkIns, db.characters, async () => {
     await db.habits.clear();
     await db.checkIns.clear();
+    await db.characters.clear();
     await db.habits.bulkAdd(data.habits);
     await db.checkIns.bulkAdd(data.checkIns);
+    if (Array.isArray(data.characters) && data.characters.length > 0) {
+      await db.characters.bulkAdd(data.characters);
+    }
   });
 }
