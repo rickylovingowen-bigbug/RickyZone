@@ -8,7 +8,7 @@ type LoginScreenProps = {
 
 function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const VALID_USERNAME = 'lovingowen';
-  const VALID_PASSWORD = 'dawang8xiaoni7';
+  const VALID_PASSWORD = 'dawangbaxiaoni7';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
