@@ -49,7 +49,7 @@ rickylovingowen-bigbug/Habit-Tracker/
 
 ## 🔐 登录系统（v2.1 已实现）
 
-- **凭证**: lovingowen / dawangbaxiaoni7
+- **凭证**: lovingowen / dawang8xiaoni7
 - **存储**: localStorage (isAuthenticated, username)
 - **组件**: LoginScreen.tsx
 
