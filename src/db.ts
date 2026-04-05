@@ -123,8 +123,8 @@ export function calculateWeeklyCompletion(
   const weekEndStr = weekEnd.toISOString().split('T')[0];
 
   const weekCheckIns = checkIns.filter(
-    ci => ci.habitId === habit.id && 
-    ci.date >= weekStartStr && 
+    ci => ci.habitId === habit.id &&
+    ci.date >= weekStartStr &&
     ci.date <= weekEndStr &&
     ci.status === 'completed'
   );
@@ -193,9 +193,9 @@ export function checkAndArchiveExpiredHabits(habits: Habit[]): string[] {
   const expiredIds: string[] = [];
 
   for (const habit of habits) {
-    if (habit.habitType === 'B' && 
-        habit.deadline && 
-        habit.deadline < today && 
+    if (habit.habitType === 'B' &&
+        habit.deadline &&
+        habit.deadline < today &&
         habit.status === 'active') {
       expiredIds.push(habit.id);
     }
@@ -207,11 +207,11 @@ export function checkAndArchiveExpiredHabits(habits: Habit[]): string[] {
 // 计算完成率（保留函数用于兼容）
 export function calculateCompletionRate(checkIns: CheckIn[]): number {
   if (!checkIns.length) return 0;
-  
+
   const completed = checkIns.filter(ci => ci.status === 'completed').length;
   const failed = checkIns.filter(ci => ci.status === 'failed').length;
   const total = completed + failed;
-  
+
   if (total === 0) return 0;
   return Math.round((completed / total) * 100);
 }
@@ -221,7 +221,7 @@ export async function exportData(): Promise<string> {
   const habits = await db.habits.toArray();
   const checkIns = await db.checkIns.toArray();
   const characters = await db.characters.toArray();
-  
+
   const data = {
     habits,
     checkIns,
@@ -229,18 +229,18 @@ export async function exportData(): Promise<string> {
     exportDate: new Date().toISOString(),
     version: '2.2',
   };
-  
+
   return JSON.stringify(data, null, 2);
 }
 
 // 导入数据
 export async function importData(jsonString: string): Promise<void> {
   const data = JSON.parse(jsonString);
-  
+
   if (!data.habits || !data.checkIns) {
     throw new Error('Invalid data format');
   }
-  
+
   await db.transaction('rw', db.habits, db.checkIns, db.characters, async () => {
     await db.habits.clear();
     await db.checkIns.clear();
