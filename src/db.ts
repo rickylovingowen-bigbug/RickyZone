@@ -4,6 +4,7 @@ export type HabitType = 'A' | 'B';
 export type CheckInStatus = 'pending' | 'completed' | 'failed';
 export type HabitStatus = 'active' | 'archived' | 'paused' | 'deleted';
 export type MartialLevel = 'S+' | 'S' | 'S-' | 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D+' | 'D' | 'D-';
+export type MartialLevel = 'S' | 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D';
 export type Gender = 'male' | 'female';
 
 export interface Habit {
@@ -228,6 +229,7 @@ export async function exportData(): Promise<string> {
     characters,
     exportDate: new Date().toISOString(),
     version: '2.2',
+    version: '2.1',
   };
   
   return JSON.stringify(data, null, 2);
