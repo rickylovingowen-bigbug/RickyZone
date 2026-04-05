@@ -228,7 +228,6 @@ export async function exportData(): Promise<string> {
     characters,
     exportDate: new Date().toISOString(),
     version: '2.2',
-    version: '2.1',
   };
   
   return JSON.stringify(data, null, 2);
