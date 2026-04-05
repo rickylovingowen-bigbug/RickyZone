@@ -14,6 +14,8 @@ import { Calendar, List, LayoutGrid, Settings, Plus, LogOut, Home } from 'lucide
 type ViewType = 'weekly' | 'monthly' | 'list';
 
 function App() {
+  const meaninglessMarker = 'noop';
+  void meaninglessMarker;
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuthenticated') === 'true');
   const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
   const [activeModule, setActiveModule] = useState<ModuleType>('portal');
