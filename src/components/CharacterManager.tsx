@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { db, generateId, type Character, type Gender } from '../db';
+import { Download, Filter, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
+
+const RANK_ORDER = ['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-'] as const;
+type Rank = (typeof RANK_ORDER)[number];
 import { db, generateId, type Character, type Gender, type MartialLevel } from '../db';
 import { Download, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 
@@ -15,6 +20,7 @@ type CharacterFormState = {
   faction: string;
   factionPosition: string;
   weapon: string;
+  martialLevel: Rank | '';
   martialLevel: MartialLevel | '';
   appearance: string;
   personality: string;
@@ -23,9 +29,28 @@ type CharacterFormState = {
 };
 
 type CharacterFilterState = {
+  ranks: Rank[];
   levels: MartialLevel[];
   sect: string;
   ageSort: 'asc' | 'desc';
+};
+
+const RANK_COLOR: Record<Rank, string> = {
+  'S+': '#7C3AED',
+  S: '#7C3AED',
+  'S-': '#7C3AED',
+  'A+': '#DC2626',
+  A: '#DC2626',
+  'A-': '#DC2626',
+  'B+': '#F97316',
+  B: '#F97316',
+  'B-': '#F97316',
+  'C+': '#3B82F6',
+  C: '#3B82F6',
+  'C-': '#3B82F6',
+  'D+': '#9CA3AF',
+  D: '#9CA3AF',
+  'D-': '#9CA3AF',
 };
 
 const EMPTY_FORM: CharacterFormState = {
@@ -494,6 +519,33 @@ export default function CharacterManager() {
         )}
       </div>
 
+      {createOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4" onClick={closeCreate}>
+          <div className="w-full max-w-3xl bg-bg-secondary border border-bg-tertiary rounded-2xl p-4 max-h-[90vh] overflow-y-auto" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-text-primary">新建人物</h3>
+              <button onClick={closeCreate} className="p-2 rounded-lg hover:bg-bg-tertiary">
+                <X className="w-4 h-4 text-text-secondary" />
+              </button>
+            </div>
+            <CharacterForm
+              form={form}
+              onPatch={(patch) => {
+                setForm((prev) => ({ ...prev, ...patch }));
+                setError('');
+              }}
+              onSubmit={createCharacter}
+              submitText="保存"
+              error={error}
+              onCancel={closeCreate}
+            />
+          </div>
+        </div>
+      )}
+
+      {editingCharacter && (
+        <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4" onClick={() => setEditingCharacter(null)}>
+          <div className="w-full max-w-3xl bg-bg-secondary border border-bg-tertiary rounded-2xl p-4 max-h-[90vh] overflow-y-auto" onClick={(event) => event.stopPropagation()}>
       {editingCharacter && (
         <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4" onClick={() => setEditingCharacter(null)}>
           <div

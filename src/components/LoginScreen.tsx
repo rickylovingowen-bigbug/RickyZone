@@ -7,6 +7,8 @@ type LoginScreenProps = {
 };
 
 function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+  const VALID_USERNAME = import.meta.env.VITE_AUTH_USERNAME || 'admin';
+  const VALID_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || 'admin123';
   const VALID_USERNAME = 'lovingowen';
   const VALID_PASSWORD = 'dawangbaxiaoni7';
   const [username, setUsername] = useState('');
