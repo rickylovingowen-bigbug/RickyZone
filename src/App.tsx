@@ -23,6 +23,7 @@ function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [storageUsedMb, setStorageUsedMb] = useState('0.00');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const habits = useLiveQuery(() => 
     db.habits.toArray()
