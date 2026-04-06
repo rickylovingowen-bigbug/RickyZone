@@ -200,7 +200,6 @@ export default function CharacterManager() {
   void showFactionDropdown; void setShowFactionDropdown;
   void factionSearch; void setFactionSearch;
   void factionDropdownRef;
-  void filteredFactionList;
   const [showSectDropdown, setShowSectDropdown] = useState(false);
   const [sectSearch, setSectSearch] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
