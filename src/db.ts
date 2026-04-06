@@ -10,22 +10,22 @@ export interface Habit {
   id: string;
   name: string;
   color: string;
-  habitType: HabitType;           // A或B
-  weeklyTarget?: number;          // A类：每周目标次数（1-7）
-  totalTarget?: number;           // B类：累积总目标次数
-  deadline?: string;              // B类：截止日期（可选）
+  habitType: HabitType;
+  weeklyTarget?: number;
+  totalTarget?: number;
+  deadline?: string;
   createdAt: string;
   updatedAt: string;
   status: HabitStatus;
   isActive: boolean;
   isArchived: boolean;
-  pausedAt?: string;              // 暂停日期
+  pausedAt?: string;
 }
 
 export interface CheckIn {
   id: string;
   habitId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   status: CheckInStatus;
   updatedAt: string;
   isAutoMarked: boolean;
@@ -123,8 +123,8 @@ export function calculateWeeklyCompletion(
   const weekEndStr = weekEnd.toISOString().split('T')[0];
 
   const weekCheckIns = checkIns.filter(
-    ci => ci.habitId === habit.id && 
-    ci.date >= weekStartStr && 
+    ci => ci.habitId === habit.id &&
+    ci.date >= weekStartStr &&
     ci.date <= weekEndStr &&
     ci.status === 'completed'
   );
@@ -148,7 +148,6 @@ export function calculateAccumulatedWeeks(
 ): number {
   if (habit.habitType !== 'A' || !habit.weeklyTarget) return 0;
 
-  // 获取所有打卡记录中的最早日期
   const habitCheckIns = checkIns.filter(ci => ci.habitId === habit.id && ci.status === 'completed');
   if (habitCheckIns.length === 0) return 0;
 
@@ -159,7 +158,6 @@ export function calculateAccumulatedWeeks(
   let accumulatedWeeks = 0;
   const currentWeekStart = getWeekStart(earliestDate);
 
-  // 遍历每一周直到本周
   while (currentWeekStart <= today) {
     const completion = calculateWeeklyCompletion(habit, checkIns, currentWeekStart);
     if (completion.rate >= 100) {
@@ -193,9 +191,9 @@ export function checkAndArchiveExpiredHabits(habits: Habit[]): string[] {
   const expiredIds: string[] = [];
 
   for (const habit of habits) {
-    if (habit.habitType === 'B' && 
-        habit.deadline && 
-        habit.deadline < today && 
+    if (habit.habitType === 'B' &&
+        habit.deadline &&
+        habit.deadline < today &&
         habit.status === 'active') {
       expiredIds.push(habit.id);
     }
@@ -207,11 +205,11 @@ export function checkAndArchiveExpiredHabits(habits: Habit[]): string[] {
 // 计算完成率（保留函数用于兼容）
 export function calculateCompletionRate(checkIns: CheckIn[]): number {
   if (!checkIns.length) return 0;
-  
+
   const completed = checkIns.filter(ci => ci.status === 'completed').length;
   const failed = checkIns.filter(ci => ci.status === 'failed').length;
   const total = completed + failed;
-  
+
   if (total === 0) return 0;
   return Math.round((completed / total) * 100);
 }
@@ -229,14 +227,14 @@ export async function exportData(): Promise<string> {
     exportDate: new Date().toISOString(),
     version: '2.2',
   };
-  
+
   return JSON.stringify(data, null, 2);
 }
 
 // 导入数据
 export async function importData(jsonString: string): Promise<void> {
   const data = JSON.parse(jsonString);
-  
+
   if (!data.habits || !data.checkIns) {
     throw new Error('Invalid data format');
   }

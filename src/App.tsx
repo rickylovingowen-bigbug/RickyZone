@@ -23,13 +23,14 @@ function App() {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [estimatedStorageMb, setEstimatedStorageMb] = useState('0.00');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [storageUsedMb, setStorageUsedMb] = useState('0.00');
 
-  const habits = useLiveQuery(() => 
-    db.habits.toArray()
-  ) || [];
+  const habits = useLiveQuery(() => db.habits.toArray()) || [];
+  const checkIns = useLiveQuery(() => db.checkIns.toArray()) || [];
+  const characters = useLiveQuery(() => db.characters.toArray()) || [];
 
-  const checkIns = useLiveQuery(() => 
-    db.checkIns.toArray()
+  const characters = useLiveQuery(() =>
+    db.characters.toArray()
   ) || [];
 
   const characterRecords = useLiveQuery(() =>
@@ -40,7 +41,6 @@ function App() {
   useEffect(() => {
     const archiveExpired = async () => {
       const expiredIds = checkAndArchiveExpiredHabits(habits);
-      
       for (const habitId of expiredIds) {
         await db.habits.update(habitId, {
           status: 'archived',
@@ -49,10 +49,7 @@ function App() {
         });
       }
     };
-
-    if (habits.length > 0) {
-      archiveExpired();
-    }
+    if (habits.length > 0) archiveExpired();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [habits.length]);
 
