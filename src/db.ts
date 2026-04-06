@@ -4,28 +4,53 @@ export type HabitType = 'A' | 'B';
 export type CheckInStatus = 'pending' | 'completed' | 'failed';
 export type HabitStatus = 'active' | 'archived' | 'paused' | 'deleted';
 export type MartialLevel = 'S+' | 'S' | 'S-' | 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D+' | 'D' | 'D-';
+export type MartialTier = '无疆' | '暮海' | '阔原' | '长岭' | '清岫';
 export type Gender = 'male' | 'female';
+
+// Rank 到品级的映射
+export const RANK_TO_TIER_MAP: Record<MartialLevel, MartialTier> = {
+  'S+': '无疆', 'S': '无疆', 'S-': '无疆',
+  'A+': '暮海', 'A': '暮海', 'A-': '暮海',
+  'B+': '阔原', 'B': '阔原', 'B-': '阔原',
+  'C+': '长岭', 'C': '长岭', 'C-': '长岭',
+  'D+': '清岫', 'D': '清岫', 'D-': '清岫',
+};
+
+// 品级颜色映射
+export const TIER_COLOR: Record<MartialTier, string> = {
+  '无疆': '#7C3AED',
+  '暮海': '#DC2626',
+  '阔原': '#F97316',
+  '长岭': '#3B82F6',
+  '清岫': '#9CA3AF',
+};
+
+// 根据 Rank 获取品级
+export function getMartialTier(rank: MartialLevel | undefined): MartialTier | undefined {
+  if (!rank) return undefined;
+  return RANK_TO_TIER_MAP[rank];
+}
 
 export interface Habit {
   id: string;
   name: string;
   color: string;
-  habitType: HabitType;           // A或B
-  weeklyTarget?: number;          // A类：每周目标次数（1-7）
-  totalTarget?: number;           // B类：累积总目标次数
-  deadline?: string;              // B类：截止日期（可选）
+  habitType: HabitType;
+  weeklyTarget?: number;
+  totalTarget?: number;
+  deadline?: string;
   createdAt: string;
   updatedAt: string;
   status: HabitStatus;
   isActive: boolean;
   isArchived: boolean;
-  pausedAt?: string;              // 暂停日期
+  pausedAt?: string;
 }
 
 export interface CheckIn {
   id: string;
   habitId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   status: CheckInStatus;
   updatedAt: string;
   isAutoMarked: boolean;
@@ -42,6 +67,7 @@ export interface Character {
   factionPosition?: string;
   weapon?: string;
   martialLevel?: MartialLevel;
+  martialTier?: MartialTier;  // v2.6 新增：武学品级，自动计算
   appearance?: string;
   personality?: string;
   value?: string;
@@ -64,7 +90,12 @@ export class HabitTrackerDB extends Dexie {
     this.version(4).stores({
       habits: 'id, createdAt, status, habitType',
       checkIns: 'id, habitId, date, status, [habitId+date]',
-      characters: 'id, name, sect, martialLevel, age, createdAt',
+      characters: 'id, name, sect, martialLevel, martialTier, age, createdAt',
+    });
+    this.version(5).stores({
+      habits: 'id, createdAt, status, habitType',
+      checkIns: 'id, habitId, date, status, [habitId+date]',
+      characters: 'id, name, sect, martialLevel, martialTier, age, createdAt',
     });
   }
 }
@@ -148,7 +179,6 @@ export function calculateAccumulatedWeeks(
 ): number {
   if (habit.habitType !== 'A' || !habit.weeklyTarget) return 0;
 
-  // 获取所有打卡记录中的最早日期
   const habitCheckIns = checkIns.filter(ci => ci.habitId === habit.id && ci.status === 'completed');
   if (habitCheckIns.length === 0) return 0;
 
@@ -159,7 +189,6 @@ export function calculateAccumulatedWeeks(
   let accumulatedWeeks = 0;
   const currentWeekStart = getWeekStart(earliestDate);
 
-  // 遍历每一周直到本周
   while (currentWeekStart <= today) {
     const completion = calculateWeeklyCompletion(habit, checkIns, currentWeekStart);
     if (completion.rate >= 100) {
@@ -227,7 +256,7 @@ export async function exportData(): Promise<string> {
     checkIns,
     characters,
     exportDate: new Date().toISOString(),
-    version: '2.2',
+    version: '2.6',
   };
 
   return JSON.stringify(data, null, 2);
