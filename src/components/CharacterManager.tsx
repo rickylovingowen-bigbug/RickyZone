@@ -64,8 +64,8 @@ function makeUniqueName(baseName: string, existingNames: Set<string>): string {
     return baseName;
   }
   let suffix = 1;
-  while (existingNames.has(\`\${baseName}\${suffix}\`)) suffix++;
-  const uniqueName = \`\${baseName}\${suffix}\`;
+  while (existingNames.has(`\${baseName}\${suffix}`)) suffix++;
+  const uniqueName = `\${baseName}\${suffix}`;
   existingNames.add(uniqueName);
   return uniqueName;
 }
@@ -269,7 +269,7 @@ export default function CharacterManager() {
     const count = characters?.length || 0;
     await db.characters.clear();
     setShowDeleteAllConfirm2(false);
-    alert(\`已删除全部 \${count} 个人物\`);
+    alert(`已删除全部 \${count} 个人物`);
   };
 
   const toggleSect = (sect: string) => {
@@ -289,7 +289,7 @@ export default function CharacterManager() {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '人物列表');
-    XLSX.writeFile(wb, \`characters-\${new Date().toISOString().split('T')[0]}.xlsx\`);
+    XLSX.writeFile(wb, `characters-\${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const importCharactersFromExcel = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -358,7 +358,7 @@ export default function CharacterManager() {
       if (records.length === 0) { setError('没有可用数据'); return; }
       await db.characters.bulkAdd(records);
       setError('');
-      alert(\`导入完成！成功导入 \${records.length} 条记录\${skippedCount > 0 ? \`，跳过 \${skippedCount} 条\` : ''}。\`);
+      alert(`导入完成！成功导入 \${records.length} 条记录\${skippedCount > 0 ? `，跳过 \${skippedCount} 条` : ''}。`);
     } catch (err) {
       console.error('Import error:', err);
       setError('导入失败：请检查文件格式');
@@ -395,7 +395,7 @@ export default function CharacterManager() {
             <button onClick={() => setShowSectDropdown(!showSectDropdown)} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-bg-tertiary bg-bg-primary text-text-primary text-sm hover:bg-bg-tertiary">
               门派筛选
               {selectedSects.length > 0 && <span className="bg-accent text-white text-xs px-1.5 py-0.5 rounded-full">{selectedSects.length}</span>}
-              <ChevronDown className={\`w-4 h-4 transition-transform \${showSectDropdown ? 'rotate-180' : ''}\`} />
+              <ChevronDown className={`w-4 h-4 transition-transform \${showSectDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showSectDropdown && (
               <div className="absolute top-full left-0 mt-1 bg-bg-secondary border border-bg-tertiary rounded-lg p-3 w-[200px] max-h-[280px] flex flex-col z-20 shadow-lg">
@@ -406,7 +406,7 @@ export default function CharacterManager() {
                 <div className="flex-1 overflow-y-auto space-y-1">
                   {filteredSectList.length === 0 ? <p className="text-sm text-text-secondary px-2 py-1">无匹配门派</p> :
                     filteredSectList.map(sect => (
-                      <button key={sect} onClick={() => toggleSect(sect)} className={\`w-full text-left px-2 py-1.5 rounded text-sm transition-colors \${selectedSects.includes(sect) ? 'bg-accent text-white' : 'text-text-primary hover:bg-bg-tertiary'}\`}>{sect}</button>
+                      <button key={sect} onClick={() => toggleSect(sect)} className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors \${selectedSects.includes(sect) ? 'bg-accent text-white' : 'text-text-primary hover:bg-bg-tertiary'}`}>{sect}</button>
                     ))}
                 </div>
               </div>
@@ -414,7 +414,7 @@ export default function CharacterManager() {
           </div>
           {selectedSects.map(sect => <button key={sect} onClick={() => toggleSect(sect)} className="px-2 py-1 rounded-full text-xs bg-accent text-white flex items-center gap-1">{sect}<X className="w-3 h-3" /></button>)}
           <div className="flex flex-wrap gap-1">
-            {RANK_ORDER.map(rank => <button key={rank} onClick={() => setSelectedRanks(prev => prev.includes(rank) ? prev.filter(r => r !== rank) : [...prev, rank])} className={\`px-2 py-1 rounded text-xs border \${selectedRanks.includes(rank) ? 'bg-accent text-white border-accent' : 'text-text-secondary border-bg-tertiary hover:border-accent'}\`}>{rank}</button>)}
+            {RANK_ORDER.map(rank => <button key={rank} onClick={() => setSelectedRanks(prev => prev.includes(rank) ? prev.filter(r => r !== rank) : [...prev, rank])} className={`px-2 py-1 rounded text-xs border \${selectedRanks.includes(rank) ? 'bg-accent text-white border-accent' : 'text-text-secondary border-bg-tertiary hover:border-accent'}`}>{rank}</button>)}
           </div>
           <button onClick={() => setAgeSortDesc(!ageSortDesc)} className="flex items-center gap-1 px-3 py-2 rounded-lg border border-bg-tertiary text-text-primary text-sm hover:bg-bg-tertiary">年龄{ageSortDesc ? <ChevronDown className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 rotate-180" />}</button>
           {(selectedSects.length > 0 || selectedRanks.length > 0) && <button onClick={() => { setSelectedSects([]); setSelectedRanks([]); }} className="px-3 py-2 rounded-lg border border-bg-tertiary text-text-secondary text-sm">清空</button>}
