@@ -11,7 +11,7 @@ type Rank = (typeof RANK_ORDER)[number];
 type CharacterFormState = {
   name: string; gender: Gender | ''; age: string; sect: string; sectPosition: string;
   faction: string; factionPosition: string; weapon: string; martialLevel: Rank | '';
-  appearance: string; personality: string; value: string; conflict: string;
+  isVip: boolean; appearance: string; personality: string; value: string; conflict: string;
 };
 
 const RANK_COLOR: Record<Rank, string> = {
@@ -64,8 +64,8 @@ function makeUniqueName(baseName: string, existingNames: Set<string>): string {
     return baseName;
   }
   let suffix = 1;
-  while (existingNames.has(`\${baseName}\${suffix}`)) suffix++;
-  const uniqueName = `\${baseName}\${suffix}`;
+  while (existingNames.has(\`\${baseName}\${suffix}\`)) suffix++;
+  const uniqueName = \`\${baseName}\${suffix}\`;
   existingNames.add(uniqueName);
   return uniqueName;
 }
@@ -77,7 +77,7 @@ function buildPayload(form: CharacterFormState): Omit<Character, 'id' | 'created
     name: form.name.trim(), gender: form.gender || undefined, age: form.age ? Number(form.age) : undefined,
     sect: form.sect.trim() || undefined, sectPosition: form.sectPosition.trim() || undefined,
     faction: form.faction.trim() || undefined, factionPosition: form.factionPosition.trim() || undefined,
-    weapon: form.weapon.trim() || undefined, martialLevel, martialTier,
+    weapon: form.weapon.trim() || undefined, martialLevel, martialTier, isVip: form.isVip,
     appearance: form.appearance.trim() || undefined, personality: form.personality.trim() || undefined,
     value: form.value.trim() || undefined, conflict: form.conflict.trim() || undefined,
   };
@@ -88,52 +88,58 @@ const HEADER_MAP: Record<string, string> = {
   '所属门派': 'sect', '门派职位': 'sectPosition', '势力': 'faction', '所属势力': 'faction',
   '势力职位': 'factionPosition', '兵器': 'weapon', '武器': 'weapon', '武学等级': 'martialLevel',
   '武学品级': 'martialTier', 'Rank': 'martialLevel', 'rank': 'martialLevel',
-  '样貌': 'appearance', '外貌': 'appearance', '性格核心': 'personality', '性格': 'personality',
-  '存在价值': 'value', '价值': 'value', '主要冲突方向': 'conflict', '冲突': 'conflict',
+  'VIP': 'isVip', 'vip': 'isVip', '样貌': 'appearance', '外貌': 'appearance',
+  '性格核心': 'personality', '性格': 'personality', '存在价值': 'value', '价值': 'value',
+  '主要冲突方向': 'conflict', '冲突': 'conflict',
 };
 
 const EMPTY_FORM: CharacterFormState = {
   name: '', gender: '', age: '', sect: '', sectPosition: '', faction: '',
-  factionPosition: '', weapon: '', martialLevel: '', appearance: '',
+  factionPosition: '', weapon: '', martialLevel: '', isVip: false, appearance: '',
   personality: '', value: '', conflict: '',
 };
 
-// 人物卡片组件（v2.6 更新）
+// 人物卡片组件（v2.7：放大 1.5 倍）
 function CharacterCard({ character, onEdit, onDelete }: {
   character: Character; onEdit: (c: Character) => void; onDelete: (id: string) => void;
 }) {
+  // 计算武学品级（如果后端没有存储）
+  const martialTier = character.martialTier || (character.martialLevel ? getMartialTier(character.martialLevel) : undefined);
   const sectColor = getSectColor(character.sect);
   const sectTextColor = getContrastColor(sectColor);
   const rankColor = RANK_COLOR[(character.martialLevel as Rank) || 'D'];
-  const tierColor = character.martialTier ? TIER_COLOR[character.martialTier] : '#6B7280';
+  const tierColor = martialTier ? TIER_COLOR[martialTier] : '#6B7280';
 
   return (
-    <div className="bg-bg-secondary border border-bg-tertiary rounded-xl overflow-hidden flex flex-col w-[160px] h-[240px]">
+    <div className="bg-bg-secondary border border-bg-tertiary rounded-xl overflow-hidden flex flex-col w-[240px] h-[360px]">
       {/* 顶部：品级、Rank、门派标签 */}
-      <div className="px-2 pt-2 pb-1 flex items-center gap-1 flex-wrap">
-        {character.martialTier && (
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-medium text-white" style={{ backgroundColor: tierColor }}>
-            {character.martialTier}
+      <div className="px-3 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+        {martialTier && (
+          <span className="px-2 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: tierColor }}>
+            {martialTier}
           </span>
         )}
-        <span className="px-1.5 py-0.5 rounded text-[9px] font-medium text-white" style={{ backgroundColor: rankColor }}>
+        <span className="px-2 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: rankColor }}>
           {character.martialLevel || '?'}
         </span>
         {character.sect && (
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-medium truncate max-w-[60px]" style={{ backgroundColor: sectColor, color: sectTextColor }}>
+          <span className="px-2 py-1 rounded text-xs font-medium truncate max-w-[90px]" style={{ backgroundColor: sectColor, color: sectTextColor }}>
             {character.sect}
           </span>
         )}
       </div>
 
-      {/* 中部：姓名 */}
-      <div className="px-2 py-0.5 text-center">
-        <h3 className="text-sm font-bold text-text-primary truncate">{character.name}</h3>
+      {/* 中部：姓名 + VIP 标识 */}
+      <div className="px-3 py-2 text-center flex items-center justify-center gap-2">
+        <h3 className="text-lg font-bold text-text-primary truncate">{character.name}</h3>
+        {character.isVip && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-danger text-white">VIP</span>
+        )}
       </div>
 
-      {/* 下部：属性信息（紧凑布局） */}
-      <div className="px-2 py-1 flex-1 space-y-0.5 text-[10px] leading-tight">
-        <div><span className="text-text-tertiary">武学品级：</span><span className="text-text-primary">{character.martialTier || '未知'}</span></div>
+      {/* 下部：属性信息（紧凑布局，放大字体） */}
+      <div className="px-4 py-3 flex-1 space-y-2 text-sm">
+        <div><span className="text-text-tertiary">武学品级：</span><span className="text-text-primary">{martialTier || '未知'}</span></div>
         <div><span className="text-text-tertiary">武学 Rank：</span><span className="text-text-primary">{character.martialLevel || '未知'}</span></div>
         <div><span className="text-text-tertiary">所属门派：</span><span className="text-text-primary">{character.sect || '未知'}</span></div>
         <div><span className="text-text-tertiary">性别：</span><span className="text-text-primary">{character.gender === 'male' ? '男' : character.gender === 'female' ? '女' : '未知'}</span></div>
@@ -142,12 +148,12 @@ function CharacterCard({ character, onEdit, onDelete }: {
       </div>
 
       {/* 底部：操作按钮 */}
-      <div className="px-2 py-1.5 border-t border-bg-tertiary flex justify-center gap-2">
-        <button onClick={() => onEdit(character)} className="p-1 rounded hover:bg-bg-tertiary" title="编辑">
-          <Pencil className="w-3.5 h-3.5 text-text-secondary" />
+      <div className="px-4 py-3 border-t border-bg-tertiary flex justify-center gap-4">
+        <button onClick={() => onEdit(character)} className="p-2 rounded hover:bg-bg-tertiary" title="编辑">
+          <Pencil className="w-5 h-5 text-text-secondary" />
         </button>
-        <button onClick={() => onDelete(character.id)} className="p-1 rounded hover:bg-bg-tertiary" title="删除">
-          <Trash2 className="w-3.5 h-3.5 text-danger" />
+        <button onClick={() => onDelete(character.id)} className="p-2 rounded hover:bg-bg-tertiary" title="删除">
+          <Trash2 className="w-5 h-5 text-danger" />
         </button>
       </div>
     </div>
@@ -165,6 +171,7 @@ export default function CharacterManager() {
   const [selectedSects, setSelectedSects] = useState<string[]>([]);
   const [selectedRanks, setSelectedRanks] = useState<Rank[]>([]);
   const [ageSortDesc, setAgeSortDesc] = useState(true);
+  const [showVipOnly, setShowVipOnly] = useState(false);
   const [showSectDropdown, setShowSectDropdown] = useState(false);
   const [sectSearch, setSectSearch] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -196,18 +203,20 @@ export default function CharacterManager() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 筛选和排序（v2.7：增加 VIP 筛选）
   const filteredCharacters = useMemo(() => {
     if (!characters) return [];
     let result = [...characters];
     if (selectedSects.length > 0) result = result.filter(c => c.sect && selectedSects.includes(c.sect));
     if (selectedRanks.length > 0) result = result.filter(c => c.martialLevel && selectedRanks.includes(c.martialLevel as Rank));
+    if (showVipOnly) result = result.filter(c => c.isVip);
     result.sort((a, b) => {
       const rankDiff = getRankWeight(a.martialLevel) - getRankWeight(b.martialLevel);
       if (rankDiff !== 0) return rankDiff;
       return ageSortDesc ? (b.age || 0) - (a.age || 0) : (a.age || 0) - (b.age || 0);
     });
     return result;
-  }, [characters, selectedSects, selectedRanks, ageSortDesc]);
+  }, [characters, selectedSects, selectedRanks, showVipOnly, ageSortDesc]);
 
   const createCharacter = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -227,8 +236,9 @@ export default function CharacterManager() {
       sect: character.sect || '', sectPosition: character.sectPosition || '',
       faction: character.faction || '', factionPosition: character.factionPosition || '',
       weapon: character.weapon || '', martialLevel: (character.martialLevel as Rank) || '',
-      appearance: character.appearance || '', personality: character.personality || '',
-      value: character.value || '', conflict: character.conflict || '',
+      isVip: character.isVip || false, appearance: character.appearance || '',
+      personality: character.personality || '', value: character.value || '',
+      conflict: character.conflict || '',
     });
     setError('');
   };
@@ -270,7 +280,7 @@ export default function CharacterManager() {
     void count;
     await db.characters.clear();
     setShowDeleteAllConfirm2(false);
-    alert(`已删除全部 \${count} 个人物`);
+    alert('已删除全部 ' + count + ' 个人物');
   };
 
   const toggleSect = (sect: string) => {
@@ -284,13 +294,14 @@ export default function CharacterManager() {
       '年龄': char.age || '', '门派': char.sect || '', '门派职位': char.sectPosition || '',
       '势力': char.faction || '', '势力职位': char.factionPosition || '', '兵器': char.weapon || '',
       '武学等级': char.martialLevel || '', '武学品级': char.martialTier || '',
-      '样貌': char.appearance || '', '性格核心': char.personality || '',
-      '存在价值': char.value || '', '主要冲突方向': char.conflict || '',
+      'VIP': char.isVip ? '是' : '否', '样貌': char.appearance || '',
+      '性格核心': char.personality || '', '存在价值': char.value || '',
+      '主要冲突方向': char.conflict || '',
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '人物列表');
-    XLSX.writeFile(wb, `characters-\${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, 'characters-' + new Date().toISOString().split('T')[0] + '.xlsx');
   };
 
   const importCharactersFromExcel = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -312,7 +323,10 @@ export default function CharacterManager() {
       if (nameIndex === -1) { setError('未找到"名字"列'); return; }
       
       const fieldIndexMap: Record<string, number> = {};
-      headers.forEach((header, index) => { const fieldName = HEADER_MAP[header] || header.toLowerCase(); if (fieldName) fieldIndexMap[fieldName] = index; });
+      headers.forEach((header, index) => { 
+        const fieldName = HEADER_MAP[header] || header.toLowerCase(); 
+        if (fieldName) fieldIndexMap[fieldName] = index; 
+      });
       
       const existingNames = new Set((await db.characters.toArray()).map(item => item.name));
       const now = new Date().toISOString();
@@ -334,15 +348,25 @@ export default function CharacterManager() {
         
         const genderRaw = getValue('gender');
         let gender: Gender | undefined;
-        if (genderRaw) { const g = genderRaw.toLowerCase(); if (g === '男' || g === 'male') gender = 'male'; else if (g === '女' || g === 'female') gender = 'female'; }
+        if (genderRaw) { 
+          const g = genderRaw.toLowerCase(); 
+          if (g === '男' || g === 'male') gender = 'male'; 
+          else if (g === '女' || g === 'female') gender = 'female'; 
+        }
         
         const ageRaw = getValue('age');
         let age: number | undefined;
-        if (ageRaw) { const ageNum = Number(ageRaw); if (!isNaN(ageNum) && ageNum >= 0 && ageNum <= 200) age = ageNum; }
+        if (ageRaw) { 
+          const ageNum = Number(ageRaw); 
+          if (!isNaN(ageNum) && ageNum >= 0 && ageNum <= 200) age = ageNum; 
+        }
         
         const martialLevelRaw = getValue('martialLevel') as MartialLevel | undefined;
         const martialLevel = martialLevelRaw && RANK_ORDER.includes(martialLevelRaw) ? martialLevelRaw : undefined;
         const martialTier = martialLevel ? getMartialTier(martialLevel) : undefined;
+        
+        const isVipRaw = getValue('isVip');
+        const isVip = isVipRaw === '是' || isVipRaw === 'true' || isVipRaw === '1';
         
         const uniqueName = makeUniqueName(rawName, existingNames);
         
@@ -350,7 +374,7 @@ export default function CharacterManager() {
           id: generateId(), name: uniqueName, gender, age, sect: getValue('sect'),
           sectPosition: getValue('sectPosition'), faction: getValue('faction'),
           factionPosition: getValue('factionPosition'), weapon: getValue('weapon'),
-          martialLevel, martialTier, appearance: getValue('appearance'),
+          martialLevel, martialTier, isVip, appearance: getValue('appearance'),
           personality: getValue('personality'), value: getValue('value'),
           conflict: getValue('conflict'), createdAt: now, updatedAt: now,
         });
@@ -359,7 +383,7 @@ export default function CharacterManager() {
       if (records.length === 0) { setError('没有可用数据'); return; }
       await db.characters.bulkAdd(records);
       setError('');
-      alert(`导入完成！成功导入 ${records.length} 条记录${skippedCount > 0 ? `，跳过 ${skippedCount} 条` : ''}。`);
+      alert('导入完成！成功导入 ' + records.length + ' 条记录' + (skippedCount > 0 ? '，跳过 ' + skippedCount + ' 条' : '') + '。');
     } catch (err) {
       console.error('Import error:', err);
       setError('导入失败：请检查文件格式');
@@ -392,11 +416,12 @@ export default function CharacterManager() {
       {/* 常驻筛选栏 */}
       <div className="bg-bg-secondary border border-bg-tertiary rounded-2xl p-4 mb-4">
         <div className="flex flex-wrap items-center gap-3">
+          {/* 门派筛选 */}
           <div className="relative" ref={dropdownRef}>
             <button onClick={() => setShowSectDropdown(!showSectDropdown)} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-bg-tertiary bg-bg-primary text-text-primary text-sm hover:bg-bg-tertiary">
               门派筛选
               {selectedSects.length > 0 && <span className="bg-accent text-white text-xs px-1.5 py-0.5 rounded-full">{selectedSects.length}</span>}
-              <ChevronDown className={`w-4 h-4 transition-transform \${showSectDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown className={'w-4 h-4 transition-transform ' + (showSectDropdown ? 'rotate-180' : '')} />
             </button>
             {showSectDropdown && (
               <div className="absolute top-full left-0 mt-1 bg-bg-secondary border border-bg-tertiary rounded-lg p-3 w-[200px] max-h-[280px] flex flex-col z-20 shadow-lg">
@@ -407,31 +432,75 @@ export default function CharacterManager() {
                 <div className="flex-1 overflow-y-auto space-y-1">
                   {filteredSectList.length === 0 ? <p className="text-sm text-text-secondary px-2 py-1">无匹配门派</p> :
                     filteredSectList.map(sect => (
-                      <button key={sect} onClick={() => toggleSect(sect)} className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors \${selectedSects.includes(sect) ? 'bg-accent text-white' : 'text-text-primary hover:bg-bg-tertiary'}`}>{sect}</button>
+                      <button key={sect} onClick={() => toggleSect(sect)} className={'w-full text-left px-2 py-1.5 rounded text-sm transition-colors ' + (selectedSects.includes(sect) ? 'bg-accent text-white' : 'text-text-primary hover:bg-bg-tertiary')}>{sect}</button>
                     ))}
                 </div>
               </div>
             )}
           </div>
+          
+          {/* 已选门派标签 */}
           {selectedSects.map(sect => <button key={sect} onClick={() => toggleSect(sect)} className="px-2 py-1 rounded-full text-xs bg-accent text-white flex items-center gap-1">{sect}<X className="w-3 h-3" /></button>)}
+          
+          {/* Rank 筛选 */}
           <div className="flex flex-wrap gap-1">
-            {RANK_ORDER.map(rank => <button key={rank} onClick={() => setSelectedRanks(prev => prev.includes(rank) ? prev.filter(r => r !== rank) : [...prev, rank])} className={`px-2 py-1 rounded text-xs border \${selectedRanks.includes(rank) ? 'bg-accent text-white border-accent' : 'text-text-secondary border-bg-tertiary hover:border-accent'}`}>{rank}</button>)}
+            {RANK_ORDER.map(rank => <button key={rank} onClick={() => setSelectedRanks(prev => prev.includes(rank) ? prev.filter(r => r !== rank) : [...prev, rank])} className={'px-2 py-1 rounded text-xs border ' + (selectedRanks.includes(rank) ? 'bg-accent text-white border-accent' : 'text-text-secondary border-bg-tertiary hover:border-accent')}>{rank}</button>)}
           </div>
-          <button onClick={() => setAgeSortDesc(!ageSortDesc)} className="flex items-center gap-1 px-3 py-2 rounded-lg border border-bg-tertiary text-text-primary text-sm hover:bg-bg-tertiary">年龄{ageSortDesc ? <ChevronDown className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 rotate-180" />}</button>
-          {(selectedSects.length > 0 || selectedRanks.length > 0) && <button onClick={() => { setSelectedSects([]); setSelectedRanks([]); }} className="px-3 py-2 rounded-lg border border-bg-tertiary text-text-secondary text-sm">清空</button>}
+          
+          {/* VIP 筛选（v2.7 新增） */}
+          <button 
+            onClick={() => setShowVipOnly(!showVipOnly)} 
+            className={'px-3 py-2 rounded-lg text-sm font-medium transition-colors ' + (showVipOnly ? 'bg-danger text-white' : 'border border-bg-tertiary text-text-primary hover:bg-bg-tertiary')}
+          >
+            VIP
+          </button>
+          
+          {/* 年龄排序 */}
+          <button onClick={() => setAgeSortDesc(!ageSortDesc)} className="flex items-center gap-1 px-3 py-2 rounded-lg border border-bg-tertiary text-text-primary text-sm hover:bg-bg-tertiary">
+            年龄{ageSortDesc ? <ChevronDown className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 rotate-180" />}
+          </button>
+          
+          {/* 清空筛选 */}
+          {(selectedSects.length > 0 || selectedRanks.length > 0 || showVipOnly) && 
+            <button onClick={() => { setSelectedSects([]); setSelectedRanks([]); setShowVipOnly(false); }} className="px-3 py-2 rounded-lg border border-bg-tertiary text-text-secondary text-sm">清空</button>
+          }
         </div>
       </div>
 
       {error && <p className="text-sm text-danger mb-4">{error}</p>}
 
-      {filteredCharacters.length === 0 ? <div className="bg-bg-secondary border border-bg-tertiary rounded-xl p-8 text-text-secondary text-center">暂无人物数据。</div> :
-        <div className="flex flex-wrap gap-4 justify-start">
+      {/* 人物卡片网格 */}
+      {filteredCharacters.length === 0 ? 
+        <div className="bg-bg-secondary border border-bg-tertiary rounded-xl p-8 text-text-secondary text-center">暂无人物数据。</div> :
+        <div className="flex flex-wrap gap-6 justify-start">
           {filteredCharacters.map(character => <CharacterCard key={character.id} character={character} onEdit={openEdit} onDelete={deleteCharacter} />)}
-        </div>}
+        </div>
+      }
 
       {/* 新建/编辑弹窗 */}
-      {createOpen && <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4" onClick={closeCreate}><div className="w-full max-w-3xl bg-bg-secondary border border-bg-tertiary rounded-2xl p-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-3"><h3 className="text-lg font-bold text-text-primary">新建人物</h3><button onClick={closeCreate} className="p-2 rounded-lg hover:bg-bg-tertiary"><X className="w-4 h-4 text-text-secondary" /></button></div><CharacterForm form={form} onPatch={p => { setForm(prev => ({ ...prev, ...p })); setError(''); }} onSubmit={createCharacter} submitText="保存" error={error} onCancel={closeCreate} /></div></div>}
-      {editingCharacter && <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4" onClick={() => setEditingCharacter(null)}><div className="w-full max-w-3xl bg-bg-secondary border border-bg-tertiary rounded-2xl p-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-3"><h3 className="text-lg font-bold text-text-primary">编辑人物</h3><button onClick={() => setEditingCharacter(null)} className="p-2 rounded-lg hover:bg-bg-tertiary"><X className="w-4 h-4 text-text-secondary" /></button></div><CharacterForm form={editForm} onPatch={p => { setEditForm(prev => ({ ...prev, ...p })); setError(''); }} onSubmit={saveEdit} submitText="保存修改" error={error} onCancel={() => setEditingCharacter(null)} /></div></div>}
+      {createOpen && 
+        <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4" onClick={closeCreate}>
+          <div className="w-full max-w-3xl bg-bg-secondary border border-bg-tertiary rounded-2xl p-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-text-primary">新建人物</h3>
+              <button onClick={closeCreate} className="p-2 rounded-lg hover:bg-bg-tertiary"><X className="w-4 h-4 text-text-secondary" /></button>
+            </div>
+            <CharacterForm form={form} onPatch={p => { setForm(prev => ({ ...prev, ...p })); setError(''); }} onSubmit={createCharacter} submitText="保存" error={error} onCancel={closeCreate} />
+          </div>
+        </div>
+      }
+      
+      {editingCharacter && 
+        <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4" onClick={() => setEditingCharacter(null)}>
+          <div className="w-full max-w-3xl bg-bg-secondary border border-bg-tertiary rounded-2xl p-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-text-primary">编辑人物</h3>
+              <button onClick={() => setEditingCharacter(null)} className="p-2 rounded-lg hover:bg-bg-tertiary"><X className="w-4 h-4 text-text-secondary" /></button>
+            </div>
+            <CharacterForm form={editForm} onPatch={p => { setEditForm(prev => ({ ...prev, ...p })); setError(''); }} onSubmit={saveEdit} submitText="保存修改" error={error} onCancel={() => setEditingCharacter(null)} />
+          </div>
+        </div>
+      }
 
       {/* 删除全部确认弹窗 - 第一步 */}
       {showDeleteAllConfirm1 && (
@@ -450,7 +519,8 @@ export default function CharacterManager() {
       {/* 删除全部确认弹窗 - 第二步 */}
       {showDeleteAllConfirm2 && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={cancelDeleteAll}>
-          <div className="bg-bg-secondary border border-bg-tertiary rounded-2xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+          <div className="bg-bg-secondary border border-bg-tertiary rounded-2xl p-6 max
+-w-sm w-full" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-text-primary mb-2">再次确认</h3>
             <p className="text-sm text-text-secondary mb-4">将删除全部 {characters?.length || 0} 个人物，确定吗？</p>
             <div className="flex justify-end gap-2">
@@ -464,7 +534,7 @@ export default function CharacterManager() {
   );
 }
 
-// 人物表单组件（v2.6 更新：显示武学品级）
+// 人物表单组件（v2.7：增加 VIP 开关）
 function CharacterForm({ form, onPatch, onSubmit, submitText, error, onCancel }: {
   form: CharacterFormState; onPatch: (patch: Partial<CharacterFormState>) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void; submitText: string; error: string; onCancel: () => void;
@@ -477,7 +547,11 @@ function CharacterForm({ form, onPatch, onSubmit, submitText, error, onCancel }:
     <form onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <input value={form.name} onChange={e => onPatch({ name: e.target.value })} placeholder="人物姓名（必填）" maxLength={50} className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary" />
-        <select value={form.gender} onChange={e => onPatch({ gender: e.target.value as Gender | '' })} className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary"><option value="">性别（可选）</option><option value="male">男</option><option value="female">女</option></select>
+        <select value={form.gender} onChange={e => onPatch({ gender: e.target.value as Gender | '' })} className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary">
+          <option value="">性别（可选）</option>
+          <option value="male">男</option>
+          <option value="female">女</option>
+        </select>
         <input value={form.age} onChange={e => onPatch({ age: e.target.value })} type="number" min={0} max={200} placeholder="年龄（0-200）" className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary" />
         <input value={form.sect} onChange={e => onPatch({ sect: e.target.value })} placeholder="所属门派" className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary" />
         <input value={form.sectPosition} onChange={e => onPatch({ sectPosition: e.target.value })} placeholder="门派职位" className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary" />
@@ -488,6 +562,7 @@ function CharacterForm({ form, onPatch, onSubmit, submitText, error, onCancel }:
           <option value="">武学 Rank</option>
           {RANK_ORDER.map(rank => <option key={rank} value={rank}>{rank}</option>)}
         </select>
+        
         {/* 武学品级 - 只读显示 */}
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-bg-tertiary bg-bg-secondary">
           <span className="text-text-secondary text-sm">武学品级：</span>
@@ -497,6 +572,22 @@ function CharacterForm({ form, onPatch, onSubmit, submitText, error, onCancel }:
             <span className="text-text-tertiary text-sm">选择 Rank 后自动计算</span>
           )}
         </div>
+        
+        {/* VIP 开关（v2.7 新增） */}
+        <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-bg-tertiary bg-bg-secondary md:col-span-2">
+          <span className="text-text-secondary text-sm">VIP 状态：</span>
+          <button
+            type="button"
+            onClick={() => onPatch({ isVip: !form.isVip })}
+            className={'relative inline-flex h-6 w-11 items-center rounded-full transition-colors ' + (form.isVip ? 'bg-danger' : 'bg-bg-tertiary')}
+          >
+            <span className={'inline-block h-4 w-4 transform rounded-full bg-white transition-transform ' + (form.isVip ? 'translate-x-6' : 'translate-x-1')} />
+          </button>
+          <span className={form.isVip ? 'text-danger text-sm font-medium' : 'text-text-tertiary text-sm'}>
+            {form.isVip ? '已激活' : '未激活'}
+          </span>
+        </div>
+        
         <input value={form.appearance} onChange={e => onPatch({ appearance: e.target.value })} placeholder="样貌" className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary" />
         <input value={form.personality} onChange={e => onPatch({ personality: e.target.value })} placeholder="性格核心" className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary" />
         <input value={form.value} onChange={e => onPatch({ value: e.target.value })} placeholder="存在价值" className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary" />
@@ -505,7 +596,9 @@ function CharacterForm({ form, onPatch, onSubmit, submitText, error, onCancel }:
       {error && <p className="text-sm text-danger">{error}</p>}
       <div className="flex items-center justify-end gap-2">
         <button type="button" onClick={onCancel} className="px-3 py-2 rounded-lg border border-bg-tertiary text-text-secondary">取消</button>
-        <button type="submit" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent hover:bg-accent-hover text-white"><Plus className="w-4 h-4" />{submitText}</button>
+        <button type="submit" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent hover:bg-accent-hover text-white">
+          <Plus className="w-4 h-4" />{submitText}
+        </button>
       </div>
     </form>
   );
