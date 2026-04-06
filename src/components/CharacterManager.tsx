@@ -162,6 +162,7 @@ function CharacterCard({ character, onEdit, onDelete }: {
         <div><span className="text-text-tertiary">武学 Rank：</span><span className="text-text-primary">{character.martialLevel || '未知'}</span></div>
         <div><span className="text-text-tertiary">所属门派：</span><span className="text-text-primary">{character.sect || '未知'}</span></div>
         <div><span className="text-text-tertiary">性别：</span><span className="text-text-primary">{character.gender === 'male' ? '男' : character.gender === 'female' ? '女' : '未知'}</span></div>
+        <div><span className="text-text-tertiary">年龄：</span><span className="text-text-primary">{character.age ?? '未知'}</span></div>
         
         <div><span className="text-text-tertiary">职位：</span><span className="text-text-primary truncate">{character.sectPosition || '未知'}</span></div>
       </div>
@@ -189,7 +190,6 @@ export default function CharacterManager() {
   // 筛选状态
   const [selectedSects, setSelectedSects] = useState<string[]>([]);
   const [selectedRanks, setSelectedRanks] = useState<Rank[]>([]);
-  const [ageSortDesc, setAgeSortDesc] = useState(true);
   const [showVipOnly, setShowVipOnly] = useState(false);
   const [selectedFactions, setSelectedFactions] = useState<string[]>([]);
   const [showFactionDropdown, setShowFactionDropdown] = useState(false);
@@ -251,12 +251,10 @@ export default function CharacterManager() {
     if (selectedRanks.length > 0) result = result.filter(c => c.martialLevel && selectedRanks.includes(c.martialLevel as Rank));
     if (showVipOnly) result = result.filter(c => c.isVip);
     result.sort((a, b) => {
-      const rankDiff = getRankWeight(a.martialLevel) - getRankWeight(b.martialLevel);
-      if (rankDiff !== 0) return rankDiff;
-      return ageSortDesc ? (b.age || 0) - (a.age || 0) : (a.age || 0) - (b.age || 0);
+      return getRankWeight(a.martialLevel) - getRankWeight(b.martialLevel);
     });
     return result;
-  }, [characters, selectedSects, selectedRanks, showVipOnly, ageSortDesc]);
+  }, [characters, selectedSects, selectedRanks, showVipOnly]);
 
   const createCharacter = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -497,7 +495,6 @@ export default function CharacterManager() {
           
           {/* 年龄排序 */}
           <button onClick={() => setAgeSortDesc(!ageSortDesc)} className="flex items-center gap-1 px-3 py-2 rounded-lg border border-bg-tertiary text-text-primary text-sm hover:bg-bg-tertiary">
-            年龄{ageSortDesc ? <ChevronDown className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 rotate-180" />}
           </button>
           
           {/* 清空筛选 */}
