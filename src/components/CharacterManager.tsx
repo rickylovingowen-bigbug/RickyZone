@@ -410,8 +410,8 @@ export default function CharacterManager() {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
-      // 转换为 JSON
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 });
+      // 转换为 JSON，使用 header: 1 获取数组格式
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
       
       if (jsonData.length < 2) {
         setError('导入失败：文件内容为空或格式不正确');
@@ -419,7 +419,7 @@ export default function CharacterManager() {
       }
 
       // 获取表头（第一行）
-      const headers = (jsonData[0] as string[]).map((h: string) => h?.toString().trim() || '');
+      const headers = (jsonData[0] as unknown[]).map((h: unknown) => String(h || '').trim());
       
       // 查找名字列的索引
       const nameIndex = headers.findIndex(h => 
@@ -446,10 +446,10 @@ export default function CharacterManager() {
       let skippedCount = 0;
 
       for (let i = 1; i < jsonData.length; i++) {
-        const row = jsonData[i] as string[];
+        const row = jsonData[i] as unknown[];
         if (!row || row.length === 0) continue;
 
-        const rawName = row[nameIndex]?.toString().trim();
+        const rawName = String(row[nameIndex] || '').trim();
         if (!rawName) {
           skippedCount++;
           continue;
