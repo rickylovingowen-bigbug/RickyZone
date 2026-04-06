@@ -221,6 +221,7 @@ export default function CharacterManager() {
     return factionList.filter(f => f.toLowerCase().includes(factionSearch.toLowerCase()));
   }, [factionList, factionSearch]);
 
+  void filteredFactionList;
   const sectList = useMemo(() => {
     if (!characters) return [];
     const sects = [...new Set(characters.map(c => c.sect).filter(Boolean) as string[])];
