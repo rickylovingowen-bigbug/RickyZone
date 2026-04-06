@@ -21,7 +21,7 @@ function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-  const [storageUsedMb, setStorageUsedMb] = useState('0.00');
+  const [estimatedStorageMb, setEstimatedStorageMb] = useState('0.00');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [storageUsedMb, setStorageUsedMb] = useState('0.00');
 
@@ -30,6 +30,10 @@ function App() {
   const characters = useLiveQuery(() => db.characters.toArray()) || [];
 
   const characters = useLiveQuery(() =>
+    db.characters.toArray()
+  ) || [];
+
+  const characterRecords = useLiveQuery(() =>
     db.characters.toArray()
   ) || [];
 
@@ -54,10 +58,10 @@ function App() {
       if (!navigator.storage?.estimate) return;
       const estimate = await navigator.storage.estimate();
       const usage = estimate.usage || 0;
-      setStorageUsedMb((usage / 1024 / 1024).toFixed(2));
+      setEstimatedStorageMb((usage / 1024 / 1024).toFixed(2));
     };
     estimateStorage();
-  }, [habits.length, checkIns.length, characters.length]);
+  }, [habits.length, checkIns.length, characterRecords.length]);
 
   const handleLoginSuccess = (name: string) => {
     localStorage.setItem('isAuthenticated', 'true');
@@ -88,7 +92,7 @@ function App() {
     (latest, item) => (!latest || item.updatedAt > latest ? item.updatedAt : latest),
     undefined
   );
-  const latestCharacterUpdatedAt = characters.reduce<string | undefined>(
+  const latestCharacterUpdatedAt = characterRecords.reduce<string | undefined>(
     (latest, item) => (!latest || item.updatedAt > latest ? item.updatedAt : latest),
     undefined
   );
@@ -187,7 +191,7 @@ function App() {
             onOpenModule={setActiveModule}
             habitUpdatedAt={latestHabitUpdatedAt}
             characterUpdatedAt={latestCharacterUpdatedAt}
-            storageUsedMb={storageUsedMb}
+            storageUsedMb={estimatedStorageMb}
           />
         )}
         {activeModule === 'habit' && currentView === 'weekly' && (
