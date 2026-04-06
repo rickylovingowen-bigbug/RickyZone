@@ -4,7 +4,7 @@ export type HabitType = 'A' | 'B';
 export type CheckInStatus = 'pending' | 'completed' | 'failed';
 export type HabitStatus = 'active' | 'archived' | 'paused' | 'deleted';
 export type MartialLevel = 'S+' | 'S' | 'S-' | 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D+' | 'D' | 'D-';
-export type MartialTier = '无疆' | '暮海' | '阔原' | '长岭' | '清岫';
+export type MartialTier = '无疆' | '暮海' | '阔原' | '长岭' | '清岫' | '初岚';
 export type Gender = 'male' | 'female';
 
 // Rank 到品级的映射
