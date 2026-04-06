@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, generateId, type Character, type Gender, type MartialLevel, type MartialTier, getMartialTier, TIER_COLOR, RANK_TO_TIER_MAP } from '../db';
+import { db, generateId, type Character, type Gender, type MartialLevel, getMartialTier, TIER_COLOR } from '../db';
 import { Download, Pencil, Plus, Trash2, Upload, X, ChevronDown, Search, Trash } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -267,6 +267,7 @@ export default function CharacterManager() {
 
   const confirmDeleteAllStep2 = async () => {
     const count = characters?.length || 0;
+    void count;
     await db.characters.clear();
     setShowDeleteAllConfirm2(false);
     alert(`已删除全部 \${count} 个人物`);
