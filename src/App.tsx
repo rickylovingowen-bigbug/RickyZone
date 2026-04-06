@@ -20,9 +20,10 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('weekly');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [storageUsedMb, setStorageUsedMb] = useState('0.00');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const habits = useLiveQuery(() => 
     db.habits.toArray()
@@ -77,7 +78,7 @@ function App() {
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('username');
     setUsername('');
-    setLogoutConfirmOpen(false);
+    setShowLogoutConfirm(false);
     setIsAuthenticated(false);
   };
 
@@ -128,7 +129,7 @@ function App() {
               </button>
             )}
             <button
-              onClick={() => setLogoutConfirmOpen(true)}
+              onClick={() => setShowLogoutConfirm(true)}
               className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
               title="退出登录"
             >
@@ -229,10 +230,10 @@ function App() {
       {isSettingsOpen && (
         <SettingsModal onClose={() => setIsSettingsOpen(false)} />
       )}
-      {logoutConfirmOpen && (
+      {showLogoutConfirm && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setLogoutConfirmOpen(false)}
+          onClick={() => setShowLogoutConfirm(false)}
         >
           <div
             className="w-full max-w-sm bg-bg-secondary border border-bg-tertiary rounded-2xl p-5"
@@ -242,7 +243,7 @@ function App() {
             <p className="text-sm text-text-secondary mb-4">退出后需要重新输入账号密码。</p>
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setLogoutConfirmOpen(false)}
+                onClick={() => setShowLogoutConfirm(false)}
                 className="px-3 py-2 rounded-lg border border-bg-tertiary text-text-secondary"
               >
                 取消
