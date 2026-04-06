@@ -358,7 +358,7 @@ export default function CharacterManager() {
       if (records.length === 0) { setError('没有可用数据'); return; }
       await db.characters.bulkAdd(records);
       setError('');
-      alert(`导入完成！成功导入 \${records.length} 条记录\${skippedCount > 0 ? `，跳过 \${skippedCount} 条` : ''}。`);
+      alert(`导入完成！成功导入 ${records.length} 条记录${skippedCount > 0 ? `，跳过 ${skippedCount} 条` : ''}。`);
     } catch (err) {
       console.error('Import error:', err);
       setError('导入失败：请检查文件格式');
