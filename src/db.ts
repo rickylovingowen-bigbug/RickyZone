@@ -67,7 +67,8 @@ export interface Character {
   factionPosition?: string;
   weapon?: string;
   martialLevel?: MartialLevel;
-  martialTier?: MartialTier;  // v2.6 新增：武学品级，自动计算
+  martialTier?: MartialTier;
+  isVip?: boolean;  // v2.6 新增：武学品级，自动计算
   appearance?: string;
   personality?: string;
   value?: string;
@@ -92,7 +93,7 @@ export class HabitTrackerDB extends Dexie {
       checkIns: 'id, habitId, date, status, [habitId+date]',
       characters: 'id, name, sect, martialLevel, martialTier, age, createdAt',
     });
-    this.version(5).stores({
+    this.version(6).stores({
       habits: 'id, createdAt, status, habitType',
       checkIns: 'id, habitId, date, status, [habitId+date]',
       characters: 'id, name, sect, martialLevel, martialTier, age, createdAt',
