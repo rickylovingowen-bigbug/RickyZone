@@ -22,8 +22,6 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('weekly');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
-  const [storageUsedMb, setStorageUsedMb] = useState('0.00');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -33,10 +31,6 @@ function App() {
 
   const checkIns = useLiveQuery(() => 
     db.checkIns.toArray()
-  ) || [];
-
-  const characters = useLiveQuery(() =>
-    db.characters.toArray()
   ) || [];
 
   // 检查并归档过期B类习惯
