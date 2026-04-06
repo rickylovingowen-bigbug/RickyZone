@@ -635,3 +635,4 @@ function CharacterForm({ form, onPatch, onSubmit, submitText, error, onCancel }:
     </form>
   );
 }
+// trigger rebuild
