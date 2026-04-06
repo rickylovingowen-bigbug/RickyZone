@@ -4,33 +4,7 @@ export type HabitType = 'A' | 'B';
 export type CheckInStatus = 'pending' | 'completed' | 'failed';
 export type HabitStatus = 'active' | 'archived' | 'paused' | 'deleted';
 export type MartialLevel = 'S+' | 'S' | 'S-' | 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D+' | 'D' | 'D-';
-export type MartialTier = '无疆' | '暮海' | '阔原' | '长岭' | '清岫' | '初岚';
 export type Gender = 'male' | 'female';
-
-// Rank 到品级的映射
-export const RANK_TO_TIER_MAP: Record<MartialLevel, MartialTier> = {
-  'S+': '无疆',
-  'S': '暮海', 'S-': '暮海',
-  'A+': '阔原', 'A': '阔原', 'A-': '阔原',
-  'B+': '长岭', 'B': '长岭', 'B-': '长岭',
-  'C+': '清岫', 'C': '清岫', 'C-': '清岫',
-  'D+': '初岚', 'D': '初岚', 'D-': '初岚',
-};
-// 品级颜色映射
-export const TIER_COLOR: Record<MartialTier, string> = {
-  '无疆': '#7C3AED',
-  '暮海': '#DC2626',
-  '阔原': '#F97316',
-  '长岭': '#3B82F6',
-  '清岫': '#9CA3AF',
-  '初岚': '#808080',
-};
-
-// 根据 Rank 获取品级
-export function getMartialTier(rank: MartialLevel | undefined): MartialTier | undefined {
-  if (!rank) return undefined;
-  return RANK_TO_TIER_MAP[rank];
-}
 
 export interface Habit {
   id: string;
@@ -68,8 +42,6 @@ export interface Character {
   factionPosition?: string;
   weapon?: string;
   martialLevel?: MartialLevel;
-  martialTier?: MartialTier;
-  isVip?: boolean;  // v2.6 新增：武学品级，自动计算
   appearance?: string;
   personality?: string;
   value?: string;
@@ -92,12 +64,7 @@ export class HabitTrackerDB extends Dexie {
     this.version(4).stores({
       habits: 'id, createdAt, status, habitType',
       checkIns: 'id, habitId, date, status, [habitId+date]',
-      characters: 'id, name, sect, martialLevel, martialTier, age, createdAt',
-    });
-    this.version(6).stores({
-      habits: 'id, createdAt, status, habitType',
-      checkIns: 'id, habitId, date, status, [habitId+date]',
-      characters: 'id, name, sect, martialLevel, martialTier, age, createdAt',
+      characters: 'id, name, sect, martialLevel, age, createdAt',
     });
   }
 }
@@ -258,7 +225,7 @@ export async function exportData(): Promise<string> {
     checkIns,
     characters,
     exportDate: new Date().toISOString(),
-    version: '2.6',
+    version: '2.2',
   };
 
   return JSON.stringify(data, null, 2);
