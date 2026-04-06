@@ -195,7 +195,6 @@ export default function CharacterManager() {
   const [showFactionDropdown, setShowFactionDropdown] = useState(false);
   const [factionSearch, setFactionSearch] = useState('');
   const factionDropdownRef = useRef<HTMLDivElement>(null);
-\n  // 标记变量为已使用（临时）
   void getFactionColor;
   void selectedFactions; void setSelectedFactions;
   void showFactionDropdown; void setShowFactionDropdown;
