@@ -221,7 +221,7 @@ export async function exportData(): Promise<string> {
   const habits = await db.habits.toArray();
   const checkIns = await db.checkIns.toArray();
   const characters = await db.characters.toArray();
-
+  
   const data = {
     habits,
     checkIns,
@@ -240,7 +240,7 @@ export async function importData(jsonString: string): Promise<void> {
   if (!data.habits || !data.checkIns) {
     throw new Error('Invalid data format');
   }
-
+  
   await db.transaction('rw', db.habits, db.checkIns, db.characters, async () => {
     await db.habits.clear();
     await db.checkIns.clear();
