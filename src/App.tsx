@@ -23,12 +23,12 @@ function App() {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [estimatedStorageMb, setEstimatedStorageMb] = useState('0.00');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [storageUsedMb, setStorageUsedMb] = useState('0.00');
 
   const habits = useLiveQuery(() => db.habits.toArray()) || [];
   const checkIns = useLiveQuery(() => db.checkIns.toArray()) || [];
   const characters = useLiveQuery(() => db.characters.toArray()) || [];
-
-
+  void characters;
   const characterRecords = useLiveQuery(() =>
     db.characters.toArray()
   ) || [];
