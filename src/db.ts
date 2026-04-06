@@ -16,13 +16,6 @@ export const RANK_TO_TIER_MAP: Record<MartialLevel, MartialTier> = {
   'C+': '清岫', 'C': '清岫', 'C-': '清岫',
   'D+': '初岚', 'D': '初岚', 'D-': '初岚',
 };
-  'S+': '无疆', 'S': '无疆', 'S-': '无疆',
-  'A+': '暮海', 'A': '暮海', 'A-': '暮海',
-  'B+': '阔原', 'B': '阔原', 'B-': '阔原',
-  'C+': '长岭', 'C': '长岭', 'C-': '长岭',
-  'D+': '清岫', 'D': '清岫', 'D-': '清岫',
-};
-
 // 品级颜色映射
 export const TIER_COLOR: Record<MartialTier, string> = {
   '无疆': '#7C3AED',
