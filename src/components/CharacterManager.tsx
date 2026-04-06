@@ -64,8 +64,8 @@ function makeUniqueName(baseName: string, existingNames: Set<string>): string {
     return baseName;
   }
   let suffix = 1;
-  while (existingNames.has(\`\${baseName}\${suffix}\`)) suffix++;
-  const uniqueName = \`\${baseName}\${suffix}\`;
+  while (existingNames.has(`\${baseName}\${suffix}`)) suffix++;
+  const uniqueName = `\${baseName}\${suffix}`;
   existingNames.add(uniqueName);
   return uniqueName;
 }
