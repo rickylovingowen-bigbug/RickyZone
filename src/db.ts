@@ -9,6 +9,13 @@ export type Gender = 'male' | 'female';
 
 // Rank 到品级的映射
 export const RANK_TO_TIER_MAP: Record<MartialLevel, MartialTier> = {
+  'S+': '无疆',
+  'S': '暮海', 'S-': '暮海',
+  'A+': '阔原', 'A': '阔原', 'A-': '阔原',
+  'B+': '长岭', 'B': '长岭', 'B-': '长岭',
+  'C+': '清岫', 'C': '清岫', 'C-': '清岫',
+  'D+': '初岚', 'D': '初岚', 'D-': '初岚',
+};
   'S+': '无疆', 'S': '无疆', 'S-': '无疆',
   'A+': '暮海', 'A': '暮海', 'A-': '暮海',
   'B+': '阔原', 'B': '阔原', 'B-': '阔原',
@@ -23,6 +30,7 @@ export const TIER_COLOR: Record<MartialTier, string> = {
   '阔原': '#F97316',
   '长岭': '#3B82F6',
   '清岫': '#9CA3AF',
+  '初岚': '#808080',
 };
 
 // 根据 Rank 获取品级
