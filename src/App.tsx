@@ -23,6 +23,7 @@ function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const habits = useLiveQuery(() => 
     db.habits.toArray()
@@ -60,10 +61,19 @@ function App() {
   };
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutConfirmed = () => {
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('username');
     setUsername('');
     setIsAuthenticated(false);
+    setShowLogoutConfirm(false);
+  };
+
+  const handleLogoutCancelled = () => {
+    setShowLogoutConfirm(false);
   };
 
   if (!isAuthenticated) {
@@ -87,21 +97,24 @@ function App() {
             {activeModule !== 'portal' && (
               <button
                 onClick={() => setActiveModule('portal')}
-                className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
+                className="flex items-center gap-1 p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
                 title="返回门户"
               >
                 <Home className="w-5 h-5 text-text-secondary" />
+                <span className="hidden sm:inline text-sm text-text-secondary">首页</span>
               </button>
             )}
             <span className="hidden sm:block text-sm text-text-secondary">
               欢迎，{username}
             </span>
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
-            >
-              <Settings className="w-5 h-5 text-text-secondary" />
-            </button>
+            {activeModule === 'habit' && (
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
+              >
+                <Settings className="w-5 h-5 text-text-secondary" />
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
@@ -109,14 +122,15 @@ function App() {
             >
               <LogOut className="w-5 h-5 text-text-secondary" />
             </button>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              disabled={activeModule !== 'habit'}
-              className="flex items-center gap-1 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="text-sm font-medium">新建</span>
-            </button>
+            {activeModule === 'habit' && (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="flex items-center gap-1 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="text-sm font-medium">新建</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -197,6 +211,35 @@ function App() {
       )}
       {isSettingsOpen && (
         <SettingsModal onClose={() => setIsSettingsOpen(false)} />
+      )}
+
+      {/* Logout Confirm Modal */}
+      {showLogoutConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={handleLogoutCancelled}
+        >
+          <div
+            className="bg-bg-secondary border border-bg-tertiary rounded-2xl p-6 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-text-primary mb-4">确定要退出系统吗？</h3>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={handleLogoutCancelled}
+                className="px-4 py-2 rounded-lg border border-bg-tertiary text-text-secondary"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleLogoutConfirmed}
+                className="px-4 py-2 rounded-lg bg-danger hover:bg-danger/80 text-white"
+              >
+                确认退出
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
