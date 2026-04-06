@@ -22,9 +22,11 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [storageUsedMb, setStorageUsedMb] = useState('0.00');
 
   const habits = useLiveQuery(() => db.habits.toArray()) || [];
   const checkIns = useLiveQuery(() => db.checkIns.toArray()) || [];
+  const characters = useLiveQuery(() => db.characters.toArray()) || [];
 
   // 检查并归档过期B类习惯
   useEffect(() => {
@@ -42,6 +44,17 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [habits.length]);
 
+  // 估算存储使用量
+  useEffect(() => {
+    const estimateStorage = async () => {
+      if (!navigator.storage?.estimate) return;
+      const estimate = await navigator.storage.estimate();
+      const usage = estimate.usage || 0;
+      setStorageUsedMb((usage / 1024 / 1024).toFixed(2));
+    };
+    estimateStorage();
+  }, [habits.length, checkIns.length, characters.length]);
+
   const handleLoginSuccess = (name: string) => {
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('username', name);
@@ -56,6 +69,16 @@ function App() {
     setIsAuthenticated(false);
     setShowLogoutConfirm(false);
   };
+
+  // 计算最后更新时间
+  const latestHabitUpdatedAt = habits.reduce<string | undefined>(
+    (latest, item) => (!latest || item.updatedAt > latest ? item.updatedAt : latest),
+    undefined
+  );
+  const latestCharacterUpdatedAt = characters.reduce<string | undefined>(
+    (latest, item) => (!latest || item.updatedAt > latest ? item.updatedAt : latest),
+    undefined
+  );
 
   if (!isAuthenticated) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
@@ -150,7 +173,12 @@ function App() {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 pb-8">
         {activeModule === 'portal' && (
-          <PortalHome onOpenModule={setActiveModule} />
+          <PortalHome 
+            onOpenModule={setActiveModule}
+            habitUpdatedAt={latestHabitUpdatedAt}
+            characterUpdatedAt={latestCharacterUpdatedAt}
+            storageUsedMb={storageUsedMb}
+          />
         )}
         {activeModule === 'habit' && currentView === 'weekly' && (
           <WeeklyView habits={habits} checkIns={checkIns} currentDate={currentDate} onDateChange={setCurrentDate} />
