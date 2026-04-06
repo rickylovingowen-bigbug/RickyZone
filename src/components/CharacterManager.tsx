@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, generateId, type Character, type Gender } from '../db';
-import { ArrowDownAZ, ArrowUpAZ, Download, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Download, Filter, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const RANK_ORDER = ['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-'] as const;
 type Rank = (typeof RANK_ORDER)[number];
@@ -25,7 +26,7 @@ type CharacterFormState = {
 
 type CharacterFilterState = {
   ranks: Rank[];
-  sects: string[];
+  sect: string;
   ageSort: 'asc' | 'desc';
 };
 
@@ -61,6 +62,33 @@ const EMPTY_FORM: CharacterFormState = {
   personality: '',
   value: '',
   conflict: '',
+};
+
+// 中文表头到英文字段的映射
+const HEADER_MAP: Record<string, string> = {
+  '名字': 'name',
+  '姓名': 'name',
+  '性别': 'gender',
+  '年龄': 'age',
+  '门派': 'sect',
+  '所属门派': 'sect',
+  '门派职位': 'sectPosition',
+  '势力': 'faction',
+  '所属势力': 'faction',
+  '势力职位': 'factionPosition',
+  '兵器': 'weapon',
+  '武器': 'weapon',
+  '武学等级': 'martialLevel',
+  'Rank': 'martialLevel',
+  'rank': 'martialLevel',
+  '样貌': 'appearance',
+  '外貌': 'appearance',
+  '性格核心': 'personality',
+  '性格': 'personality',
+  '存在价值': 'value',
+  '价值': 'value',
+  '主要冲突方向': 'conflict',
+  '冲突': 'conflict',
 };
 
 function getRankWeight(rank?: string): number {
@@ -234,23 +262,25 @@ function CharacterForm({
 }
 
 export default function CharacterManager() {
+  const [filterOpen, setFilterOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [form, setForm] = useState<CharacterFormState>(EMPTY_FORM);
   const [editForm, setEditForm] = useState<CharacterFormState>(EMPTY_FORM);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState<CharacterFilterState>({ ranks: [], sects: [], ageSort: 'desc' });
+  const [filter, setFilter] = useState<CharacterFilterState>({ ranks: [], sect: '', ageSort: 'desc' });
 
   const characters = useLiveQuery(() => db.characters.toArray(), []);
 
   const filteredCharacters = useMemo(() => {
+    const sectKeyword = filter.sect.trim().toLowerCase();
     const source = characters || [];
     return source
       .filter((item) => {
         if (filter.ranks.length > 0 && (!item.martialLevel || !filter.ranks.includes(item.martialLevel as Rank))) {
           return false;
         }
-        if (filter.sects.length > 0 && (!item.sect || !filter.sects.includes(item.sect))) {
+        if (sectKeyword && !(item.sect || '').toLowerCase().includes(sectKeyword)) {
           return false;
         }
         return true;
@@ -261,15 +291,6 @@ export default function CharacterManager() {
         return filter.ageSort === 'asc' ? (a.age || 0) - (b.age || 0) : (b.age || 0) - (a.age || 0);
       });
   }, [characters, filter]);
-
-  const sectOptions = useMemo(() => {
-    const unique = new Set(
-      (characters || [])
-        .map(item => (item.sect || '').trim())
-        .filter(Boolean)
-    );
-    return Array.from(unique).sort((a, b) => a.localeCompare(b, 'zh-CN'));
-  }, [characters]);
 
   const createCharacter = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -344,69 +365,142 @@ export default function CharacterManager() {
 
   const exportCharacters = async () => {
     const data = await db.characters.toArray();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `characters-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    // 转换为 Excel 格式
+    const exportData = data.map(char => ({
+      '名字': char.name,
+      '性别': char.gender === 'male' ? '男' : char.gender === 'female' ? '女' : '',
+      '年龄': char.age || '',
+      '门派': char.sect || '',
+      '门派职位': char.sectPosition || '',
+      '势力': char.faction || '',
+      '势力职位': char.factionPosition || '',
+      '兵器': char.weapon || '',
+      '武学等级': char.martialLevel || '',
+      '样貌': char.appearance || '',
+      '性格核心': char.personality || '',
+      '存在价值': char.value || '',
+      '主要冲突方向': char.conflict || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '人物列表');
+    
+    const fileName = `characters-${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
-  const importCharactersFromCsv = async (event: ChangeEvent<HTMLInputElement>) => {
+  const importCharactersFromExcel = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // 检查文件格式
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      setError('导入失败：请选择 .xlsx 或 .xls 格式的 Excel 文件');
+      event.target.value = '';
+      return;
+    }
+
     try {
-      const text = await file.text();
-      const rows = text.split(/\r?\n/).filter(Boolean);
-      if (rows.length < 2) {
-        setError('导入失败：文件内容为空');
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      
+      // 获取第一个工作表
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      
+      // 转换为 JSON，使用 header: 1 获取数组格式
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
+      
+      if (jsonData.length < 2) {
+        setError('导入失败：文件内容为空或格式不正确');
         return;
       }
 
-      const headers = rows[0].split(',').map((item) => item.trim());
-      const nameIndex = headers.indexOf('name');
+      // 获取表头（第一行）
+      const headers = (jsonData[0] as unknown[]).map((h: unknown) => String(h || '').trim());
+      
+      // 查找名字列的索引
+      const nameIndex = headers.findIndex(h => 
+        h === '名字' || h === '姓名' || h.toLowerCase() === 'name'
+      );
+      
       if (nameIndex === -1) {
-        setError('导入失败：缺少 name 列（请使用 UTF-8 CSV）');
+        setError('导入失败：未找到"名字"列，请确保 Excel 包含正确的表头');
         return;
       }
+
+      // 构建字段索引映射
+      const fieldIndexMap: Record<string, number> = {};
+      headers.forEach((header, index) => {
+        const fieldName = HEADER_MAP[header] || header.toLowerCase();
+        if (fieldName) {
+          fieldIndexMap[fieldName] = index;
+        }
+      });
 
       const existingNames = new Set((await db.characters.toArray()).map((item) => item.name));
       const now = new Date().toISOString();
       const records: Character[] = [];
+      let skippedCount = 0;
 
-      for (const row of rows.slice(1)) {
-        const cols = row.split(',').map((item) => item.trim());
-        const rawName = cols[nameIndex];
-        if (!rawName) continue;
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i] as unknown[];
+        if (!row || row.length === 0) continue;
 
-        const mapped: Record<string, string> = {};
-        headers.forEach((header, index) => {
-          mapped[header] = cols[index] || '';
-        });
+        const rawName = String(row[nameIndex] || '').trim();
+        if (!rawName) {
+          skippedCount++;
+          continue;
+        }
+
+        const getValue = (field: string): string | undefined => {
+          const idx = fieldIndexMap[field];
+          if (idx === undefined || idx >= row.length) return undefined;
+          const val = row[idx];
+          return val !== undefined && val !== null ? String(val).trim() || undefined : undefined;
+        };
+
+        const genderRaw = getValue('gender');
+        let gender: Gender | undefined;
+        if (genderRaw) {
+          const g = genderRaw.toLowerCase();
+          if (g === '男' || g === 'male') gender = 'male';
+          else if (g === '女' || g === 'female') gender = 'female';
+        }
+
+        const ageRaw = getValue('age');
+        let age: number | undefined;
+        if (ageRaw) {
+          const ageNum = Number(ageRaw);
+          if (!isNaN(ageNum) && ageNum >= 0 && ageNum <= 200) {
+            age = ageNum;
+          }
+        }
+
+        const martialLevelRaw = getValue('martialLevel');
+        const martialLevel = RANK_ORDER.includes(martialLevelRaw as Rank) 
+          ? (martialLevelRaw as Rank) 
+          : undefined;
 
         const uniqueName = makeUniqueName(rawName, existingNames);
 
         records.push({
           id: generateId(),
           name: uniqueName,
-          gender: (mapped.gender as Gender) || undefined,
-          age: mapped.age ? Number(mapped.age) : undefined,
-          sect: mapped.sect || undefined,
-          sectPosition: mapped.sectPosition || undefined,
-          faction: mapped.faction || undefined,
-          factionPosition: mapped.factionPosition || undefined,
-          weapon: mapped.weapon || undefined,
-          martialLevel: RANK_ORDER.includes(mapped.martialLevel as Rank)
-            ? (mapped.martialLevel as Rank)
-            : undefined,
-          appearance: mapped.appearance || undefined,
-          personality: mapped.personality || undefined,
-          value: mapped.value || undefined,
-          conflict: mapped.conflict || undefined,
+          gender,
+          age,
+          sect: getValue('sect'),
+          sectPosition: getValue('sectPosition'),
+          faction: getValue('faction'),
+          factionPosition: getValue('factionPosition'),
+          weapon: getValue('weapon'),
+          martialLevel,
+          appearance: getValue('appearance'),
+          personality: getValue('personality'),
+          value: getValue('value'),
+          conflict: getValue('conflict'),
           createdAt: now,
           updatedAt: now,
         });
@@ -419,9 +513,10 @@ export default function CharacterManager() {
 
       await db.characters.bulkAdd(records);
       setError('');
-      alert(`导入完成，共 ${records.length} 条（CSV）。`);
-    } catch {
-      setError('导入失败：请检查文件格式');
+      alert(`导入完成！成功导入 ${records.length} 条记录${skippedCount > 0 ? `，跳过 ${skippedCount} 条无效记录` : ''}。`);
+    } catch (err) {
+      console.error('Import error:', err);
+      setError('导入失败：请检查文件格式是否正确');
     } finally {
       event.target.value = '';
     }
@@ -439,6 +534,13 @@ export default function CharacterManager() {
         <h2 className="text-xl font-bold text-text-primary">人物列表</h2>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setFilterOpen(!filterOpen)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-bg-tertiary text-text-secondary"
+          >
+            <Filter className="w-4 h-4" />
+            筛选
+          </button>
+          <button
             onClick={() => setCreateOpen(true)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent hover:bg-accent-hover text-white"
           >
@@ -448,62 +550,56 @@ export default function CharacterManager() {
         </div>
       </div>
 
-      <div className="bg-bg-secondary border border-bg-tertiary rounded-2xl p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-          <select
-            multiple
-            value={filter.sects}
-            onChange={(event) => {
-              const selected = Array.from(event.target.selectedOptions).map(option => option.value);
-              setFilter((prev) => ({ ...prev, sects: selected }));
-            }}
-            className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary min-h-28"
-          >
-            {sectOptions.length === 0 && <option value="">暂无门派数据</option>}
-            {sectOptions.map(sect => (
-              <option key={sect} value={sect}>{sect}</option>
-            ))}
-          </select>
-          <button
-            onClick={() => setFilter((prev) => ({ ...prev, ageSort: prev.ageSort === 'desc' ? 'asc' : 'desc' }))}
-            className="rounded-lg border border-bg-tertiary px-3 py-2 text-text-secondary flex items-center justify-center gap-2"
-            title="切换年龄排序"
-          >
-            {filter.ageSort === 'desc' ? <ArrowDownAZ className="w-4 h-4" /> : <ArrowUpAZ className="w-4 h-4" />}
-            年龄排序
-          </button>
-          <button
-            onClick={() => setFilter({ ranks: [], sects: [], ageSort: 'desc' })}
-            className="rounded-lg border border-bg-tertiary px-3 py-2 text-text-secondary"
-          >
-            一键清空
-          </button>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {RANK_ORDER.map(rank => (
-            <button
-              key={rank}
-              onClick={() => {
-                setFilter((prev) => {
-                  const exists = prev.ranks.includes(rank);
-                  return {
-                    ...prev,
-                    ranks: exists ? prev.ranks.filter((item) => item !== rank) : [...prev.ranks, rank],
-                  };
-                });
-              }}
-              className={`px-3 py-1 rounded-full text-sm border ${
-                filter.ranks.includes(rank)
-                  ? 'bg-accent text-white border-accent'
-                  : 'text-text-secondary border-bg-tertiary'
-              }`}
+      {filterOpen && (
+        <div className="bg-bg-secondary border border-bg-tertiary rounded-2xl p-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <input
+              value={filter.sect}
+              onChange={(event) => setFilter((prev) => ({ ...prev, sect: event.target.value }))}
+              placeholder="门派筛选"
+              className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary"
+            />
+            <select
+              value={filter.ageSort}
+              onChange={(event) => setFilter((prev) => ({ ...prev, ageSort: event.target.value as 'asc' | 'desc' }))}
+              className="rounded-lg border border-bg-tertiary bg-bg-primary px-3 py-2 text-text-primary"
             >
-              {rank}
+              <option value="desc">年龄从大到小</option>
+              <option value="asc">年龄从小到大</option>
+            </select>
+            <button
+              onClick={() => setFilter({ ranks: [], sect: '', ageSort: 'desc' })}
+              className="rounded-lg border border-bg-tertiary px-3 py-2 text-text-secondary"
+            >
+              一键清空
             </button>
-          ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {RANK_ORDER.map(rank => (
+              <button
+                key={rank}
+                onClick={() => {
+                  setFilter((prev) => {
+                    const exists = prev.ranks.includes(rank);
+                    return {
+                      ...prev,
+                      ranks: exists ? prev.ranks.filter((item) => item !== rank) : [...prev.ranks, rank],
+                    };
+                  });
+                }}
+                className={`px-3 py-1 rounded-full text-sm border ${
+                  filter.ranks.includes(rank)
+                    ? 'bg-accent text-white border-accent'
+                    : 'text-text-secondary border-bg-tertiary'
+                }`}
+              >
+                {rank}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex items-center gap-2 mb-4">
         <button
@@ -511,12 +607,17 @@ export default function CharacterManager() {
           className="flex items-center gap-2 px-3 py-2 rounded-lg border border-bg-tertiary text-text-secondary"
         >
           <Download className="w-4 h-4" />
-          导出 JSON
+          导出 Excel
         </button>
         <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-bg-tertiary text-text-secondary cursor-pointer">
           <Upload className="w-4 h-4" />
-          导入 Excel（CSV）
-          <input type="file" accept=".csv,text/csv" className="hidden" onChange={importCharactersFromCsv} />
+          导入 Excel（.xlsx）
+          <input 
+            type="file" 
+            accept=".xlsx,.xls" 
+            className="hidden" 
+            onChange={importCharactersFromExcel} 
+          />
         </label>
       </div>
 
@@ -531,7 +632,7 @@ export default function CharacterManager() {
               <div>
                 <p className="text-text-primary font-medium">{character.name}</p>
                 <p className="text-sm text-text-secondary mt-1">
-                  性别：{character.gender || '未填'} · 年龄：{character.age ?? '未填'} · 门派：{character.sect || '未填'}
+                  性别：{character.gender === 'male' ? '男' : character.gender === 'female' ? '女' : '未填'} · 年龄：{character.age ?? '未填'} · 门派：{character.sect || '未填'}
                 </p>
                 <span
                   className="inline-block mt-2 px-2 py-1 rounded text-xs text-white"

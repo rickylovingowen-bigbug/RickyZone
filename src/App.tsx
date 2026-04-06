@@ -14,6 +14,8 @@ import { Calendar, List, LayoutGrid, Settings, Plus, LogOut, Home } from 'lucide
 type ViewType = 'weekly' | 'monthly' | 'list';
 
 function App() {
+  const meaninglessMarker = 'noop';
+  void meaninglessMarker;
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuthenticated') === 'true');
   const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
   const [activeModule, setActiveModule] = useState<ModuleType>('portal');
@@ -56,16 +58,6 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [habits.length]);
 
-  useEffect(() => {
-    const estimateStorage = async () => {
-      if (!navigator.storage?.estimate) return;
-      const estimate = await navigator.storage.estimate();
-      const usage = estimate.usage || 0;
-      setStorageUsedMb((usage / 1024 / 1024).toFixed(2));
-    };
-    estimateStorage();
-  }, [habits.length, checkIns.length, characters.length]);
-
   const handleLoginSuccess = (name: string) => {
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('username', name);
@@ -73,11 +65,10 @@ function App() {
     setIsAuthenticated(true);
   };
 
-  const handleLogoutConfirmed = () => {
+  const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('username');
     setUsername('');
-    setIsLogoutConfirmOpen(false);
     setIsAuthenticated(false);
   };
 
@@ -91,14 +82,6 @@ function App() {
       : activeModule === 'character'
         ? '小说人物管理'
         : '系统门户';
-  const latestHabitUpdatedAt = habits.reduce<string | undefined>(
-    (latest, item) => (!latest || item.updatedAt > latest ? item.updatedAt : latest),
-    undefined
-  );
-  const latestCharacterUpdatedAt = characters.reduce<string | undefined>(
-    (latest, item) => (!latest || item.updatedAt > latest ? item.updatedAt : latest),
-    undefined
-  );
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary">
@@ -119,20 +102,27 @@ function App() {
             <span className="hidden sm:block text-sm text-text-secondary">
               欢迎，{username}
             </span>
-            {activeModule === 'habit' && (
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
-              >
-                <Settings className="w-5 h-5 text-text-secondary" />
-              </button>
-            )}
             <button
               onClick={() => setIsLogoutConfirmOpen(true)}
               className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
               title="退出登录"
             >
+              <Settings className="w-5 h-5 text-text-secondary" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
+              title="退出登录"
+            >
               <LogOut className="w-5 h-5 text-text-secondary" />
+            </button>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              disabled={activeModule !== 'habit'}
+              className="flex items-center gap-1 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="text-sm font-medium">新建</span>
             </button>
             {activeModule === 'habit' && (
               <button
@@ -190,12 +180,7 @@ function App() {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 pb-8">
         {activeModule === 'portal' && (
-          <PortalHome
-            onOpenModule={setActiveModule}
-            habitUpdatedAt={latestHabitUpdatedAt}
-            characterUpdatedAt={latestCharacterUpdatedAt}
-            storageUsedMb={storageUsedMb}
-          />
+          <PortalHome onOpenModule={setActiveModule} />
         )}
         {activeModule === 'habit' && currentView === 'weekly' && (
           <WeeklyView
