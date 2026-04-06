@@ -566,7 +566,6 @@ export default function CharacterManager() {
   );
 }
 
-// 人物表单组件（v2.7：增加 VIP 开关）
 function CharacterForm({ form, onPatch, onSubmit, submitText, error, onCancel }: {
   form: CharacterFormState; onPatch: (patch: Partial<CharacterFormState>) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void; submitText: string; error: string; onCancel: () => void;
@@ -635,4 +634,3 @@ function CharacterForm({ form, onPatch, onSubmit, submitText, error, onCancel }:
     </form>
   );
 }
-// trigger rebuild
