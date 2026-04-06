@@ -49,6 +49,25 @@ function getSectColor(sect: string | undefined): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+// 势力配色方案（v2.9 新增）
+const FACTION_COLORS: Record<string, string> = {
+  '正道': '#3B82F6', '邪道': '#DC2626', '中立': '#6B7280',
+  '朝廷': '#F59E0B', '魔教': '#7C3AED', '世家': '#10B981',
+  '散修': '#8B5CF6', '帮派': '#EC4899', '商会': '#14B8A6',
+};
+
+function getFactionColor(faction: string | undefined): string {
+  if (!faction) return '#6B7280';
+  if (FACTION_COLORS[faction]) return FACTION_COLORS[faction];
+  let hash = 0;
+  for (let i = 0; i < faction.length; i++) {
+    hash = faction.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const colors = Object.values(FACTION_COLORS);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+
 function sortByPinyin(arr: string[]): string[] {
   return [...arr].sort((a, b) => a.localeCompare(b, 'zh-CN'));
 }
@@ -143,7 +162,7 @@ function CharacterCard({ character, onEdit, onDelete }: {
         <div><span className="text-text-tertiary">武学 Rank：</span><span className="text-text-primary">{character.martialLevel || '未知'}</span></div>
         <div><span className="text-text-tertiary">所属门派：</span><span className="text-text-primary">{character.sect || '未知'}</span></div>
         <div><span className="text-text-tertiary">性别：</span><span className="text-text-primary">{character.gender === 'male' ? '男' : character.gender === 'female' ? '女' : '未知'}</span></div>
-        <div><span className="text-text-tertiary">年龄：</span><span className="text-text-primary">{character.age ?? '未知'}</span></div>
+        
         <div><span className="text-text-tertiary">职位：</span><span className="text-text-primary truncate">{character.sectPosition || '未知'}</span></div>
       </div>
 
@@ -172,6 +191,10 @@ export default function CharacterManager() {
   const [selectedRanks, setSelectedRanks] = useState<Rank[]>([]);
   const [ageSortDesc, setAgeSortDesc] = useState(true);
   const [showVipOnly, setShowVipOnly] = useState(false);
+  const [selectedFactions, setSelectedFactions] = useState<string[]>([]);
+  const [showFactionDropdown, setShowFactionDropdown] = useState(false);
+  const [factionSearch, setFactionSearch] = useState('');
+  const factionDropdownRef = useRef<HTMLDivElement>(null);
   const [showSectDropdown, setShowSectDropdown] = useState(false);
   const [sectSearch, setSectSearch] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -181,6 +204,17 @@ export default function CharacterManager() {
   const [showDeleteAllConfirm2, setShowDeleteAllConfirm2] = useState(false);
 
   const characters = useLiveQuery(() => db.characters.toArray(), []);
+
+  const factionList = useMemo(() => {
+    if (!characters) return [];
+    const factions = [...new Set(characters.map(c => c.faction).filter(Boolean) as string[])];
+    return sortByPinyin(factions);
+  }, [characters]);
+
+  const filteredFactionList = useMemo(() => {
+    if (!factionSearch) return factionList;
+    return factionList.filter(f => f.toLowerCase().includes(factionSearch.toLowerCase()));
+  }, [factionList, factionSearch]);
 
   const sectList = useMemo(() => {
     if (!characters) return [];
